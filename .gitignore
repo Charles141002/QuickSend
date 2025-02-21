@@ -1,0 +1,15 @@
+# Ignorer le fichier de base de données
+quicksend.db
+
+# Ignorer les fichiers de configuration de l'environnement
+.env
+
+# Ignorer les fichiers de cache Python
+__pycache__/
+*.py[cod]
+
+# Ignorer les fichiers de log
+*.log
+
+# Ignorer les fichiers de test
+*.test
