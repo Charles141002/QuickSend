@@ -9,7 +9,8 @@ const Navbar = () => {
             </div>
             <div>
                 <Link to="/user-home" style={{ color: 'white', marginRight: '20px', textDecoration: 'none' }}>Accueil</Link>
-                <Link to="/create-email" style={{ color: 'white', textDecoration: 'none' }}>Nouvel Email</Link>
+                <Link to="/create-email" style={{ color: 'white', marginRight: '20px', textDecoration: 'none' }}>Nouvel Email</Link>
+                <Link to="/add-credits" style={{ color: 'white', textDecoration: 'none' }}>Ajouter Crédits</Link>
             </div>
         </nav>
     );
