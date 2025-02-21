@@ -6,7 +6,7 @@ from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from datetime import datetime, timedelta
 import jwt
-
+from fastapi.responses import RedirectResponse
 from ..database import get_db
 from ..config import get_settings
 from ..models.user import User
@@ -138,11 +138,7 @@ async def auth_callback(code: str, db: Session = Depends(get_db)):
         # Générer le JWT
         access_token = create_access_token(data={"sub": email})
         
-        return {
-            "access_token": access_token,
-            "token_type": "bearer",
-            "user": UserSchema.from_orm(db_user)
-        }
+        return RedirectResponse(url=f"http://localhost:3000/user-home?token={access_token}")
 
     except Exception as e:
         raise HTTPException(
@@ -158,3 +154,7 @@ def create_access_token(data: dict):
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
     return encoded_jwt 
+
+@router.get("/me")
+async def get_current_user_endpoint(current_user: User = Depends(get_current_user)):
+    return current_user
