@@ -1,4 +1,3 @@
-// src/components/Home.js
 import React from 'react';
 import Login from './Login';
 

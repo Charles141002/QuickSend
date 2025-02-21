@@ -1,20 +1,25 @@
-// src/App.js
-import React from 'react';
-import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Home from './components/Home';
 import UserHome from './components/UserHome';
-import CreateEmail from './components/CreateEmail'; // Importer le nouveau composant
+import CreateEmail from './components/CreateEmail';
+import Navbar from './components/Navbar';
 
 function App() {
-    const token = localStorage.getItem('token'); // Vérifier si le token est présent
+    const token = localStorage.getItem('token');
+
+    console.log('Token dans App.js :', token); // Ajout pour debug
 
     return (
         <Router>
             <div className="App">
+                {token && <Navbar />}
                 <Routes>
-                    <Route path="/" element={<Home />} />
-                    <Route path="/user-home" element={<UserHome /> } />
-                    <Route path="/create-email" element={<CreateEmail />} /> {/* Ajouter la route pour la création d'email */}
+                    <Route path="/" element={!token ? <Home /> : <Navigate to="/user-home" />} />
+                    <Route path="/user-home" element={<UserHome /> } /> {/* On laisse UserHome gérer la logique */}
+                    <Route
+                        path="/create-email"
+                        element={token ? <CreateEmail /> : <Navigate to="/" />}
+                    />
                 </Routes>
             </div>
         </Router>

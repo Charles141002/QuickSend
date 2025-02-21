@@ -1,4 +1,3 @@
-// src/components/Login.js
 import React, { useState } from 'react';
 
 const Login = () => {
@@ -15,21 +14,31 @@ const Login = () => {
 
             if (response.ok) {
                 const data = await response.json();
-                // Rediriger l'utilisateur vers l'URL de connexion Google
-                window.location.href = data.authorization_url; // Assurez-vous que la clé correspond à votre réponse
+                if (data.authorization_url) {
+                    // Rediriger vers l'URL d'autorisation Google
+                    window.location.href = data.authorization_url;
+                } else {
+                    setMessage('URL d’autorisation manquante dans la réponse.');
+                }
             } else {
-                setMessage('Erreur lors de la récupération de l\'URL de connexion.');
+                const errorData = await response.json();
+                setMessage(errorData.message || 'Erreur lors de la récupération de l’URL de connexion.');
             }
         } catch (error) {
-            setMessage('Erreur de connexion. Veuillez réessayer.');
+            setMessage('Erreur réseau. Veuillez réessayer.');
+            console.error('Erreur lors de la connexion :', error);
         }
     };
 
     return (
-        <div style={{ textAlign: 'center', marginTop: '50px' }}>
-            <h2>Connexion</h2>
-            <button onClick={handleLogin}>Se connecter avec Google</button>
-            {message && <p>{message}</p>}
+        <div style={{ textAlign: 'center', marginTop: '20px' }}>
+            <button
+                onClick={handleLogin}
+                style={{ padding: '10px 20px', fontSize: '16px', cursor: 'pointer' }}
+            >
+                Se connecter avec Google
+            </button>
+            {message && <p style={{ color: 'red' }}>{message}</p>}
         </div>
     );
 };

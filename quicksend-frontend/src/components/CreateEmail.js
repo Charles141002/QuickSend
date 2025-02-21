@@ -9,6 +9,10 @@ const CreateEmail = () => {
     const [recipients, setRecipients] = useState([]);
     const [message, setMessage] = useState('');
 
+    const token = localStorage.getItem('token'); // Récupérer le token stocké
+
+    console.log('Token dans CreateEmail.js :', token); // Ajout pour debug
+
     const handleAddRecipient = () => {
         if (recipientName && recipientEmail) {
             setRecipients([...recipients, { name: recipientName, email: recipientEmail }]);
@@ -19,8 +23,6 @@ const CreateEmail = () => {
 
     const handleSubmit = async (event) => {
         event.preventDefault();
-
-        const token = localStorage.getItem('token'); // Récupérer le token stocké
 
         const response = await fetch('/api/emails/send', {
             method: 'POST',
