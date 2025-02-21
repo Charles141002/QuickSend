@@ -1,8 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Request
-from fastapi.security import HTTPBearer
 from sqlalchemy.orm import Session
 import stripe
-from typing import Optional
 
 from ..database import get_db
 from ..config import get_settings

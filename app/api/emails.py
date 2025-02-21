@@ -1,8 +1,6 @@
-from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List
-import csv
-import io
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from email.mime.text import MIMEText
@@ -112,40 +110,3 @@ async def send_emails(
             detail=str(e)
         )
 
-@router.post("/upload-csv")
-async def upload_csv(
-    file: UploadFile = File(...),
-    current_user: User = Depends(get_current_user)
-):
-    """Parse un fichier CSV de contacts"""
-    if not file.filename.endswith('.csv'):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Le fichier doit être au format CSV"
-        )
-
-    try:
-        contents = await file.read()
-        csv_file = io.StringIO(contents.decode('utf-8-sig'))  # Gestion des BOM UTF-8
-        csv_reader = csv.reader(csv_file)
-        
-        contacts = []
-        for row in csv_reader:
-            if len(row) >= 2:
-                contacts.append({
-                    "name": row[0].strip(),
-                    "email": row[1].strip()
-                })
-
-        return {
-            "contacts": contacts,
-            "count": len(contacts),
-            "credits_required": len(contacts),
-            "credits_available": current_user.credits
-        }
-
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Erreur lors du parsing du CSV: {str(e)}"
-        ) 

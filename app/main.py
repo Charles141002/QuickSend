@@ -1,6 +1,5 @@
 from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.openapi.docs import get_swagger_ui_html
 from fastapi.security import HTTPBearer
 
 from app.database import engine

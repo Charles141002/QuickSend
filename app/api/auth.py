@@ -1,6 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 from google_auth_oauthlib.flow import Flow
 from google.oauth2.credentials import Credentials
@@ -11,7 +10,7 @@ import jwt
 from ..database import get_db
 from ..config import get_settings
 from ..models.user import User
-from ..schemas.user import UserCreate, User as UserSchema
+from ..schemas.user import User as UserSchema
 
 router = APIRouter()
 settings = get_settings()
