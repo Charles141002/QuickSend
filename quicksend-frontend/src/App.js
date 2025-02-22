@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route} from 'react-router-dom';
 import Home from './components/Home';
 import UserHome from './components/UserHome';
 import CreateEmail from './components/CreateEmail';
@@ -13,7 +13,7 @@ function App() {
     return (
         <Router>
             <div className="App">
-                {token && <Navbar />}
+                {<Navbar />}
                 <Routes>
                     <Route path="/" element={ <Home /> } />
                     <Route path="/user-home" element={<UserHome /> } /> {/* On laisse UserHome gérer la logique */}

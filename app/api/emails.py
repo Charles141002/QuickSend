@@ -1,27 +1,38 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form
 from sqlalchemy.orm import Session
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+from email.mime.application import MIMEApplication
+from email.mime.image import MIMEImage
 import base64
-from typing import Dict
+from typing import List
+import logging
+import mimetypes
 
 from ..database import get_db
 from ..models.user import User
-from ..schemas.email import EmailRequest
 from .auth import get_current_user
-from ..api.sheets import get_sheet_data  # Importer depuis sheets.py
+from ..api.sheets import get_sheet_data
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
-@router.post("/send")
+@router.post("/send", response_model=dict)
 async def send_emails(
-    request: EmailRequest,
+    spreadsheet_id: str = Form(...),
+    range_name: str = Form(...),
+    subject: str = Form(...),
+    content: str = Form(...),
+    files: List[UploadFile] = File(default=[]),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Envoie des emails personnalisés en utilisant un Google Sheet"""
+    """Envoie des emails personnalisés avec pièces jointes en utilisant un Google Sheet"""
+    logger.debug(f"spreadsheet_id: {spreadsheet_id}, range_name: {range_name}, subject: {subject}, content: {content}")
+    logger.debug(f"Fichiers: {[file.filename for file in files]}")
+
     if not current_user.google_tokens or "token" not in current_user.google_tokens:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -37,11 +48,12 @@ async def send_emails(
         scopes=current_user.google_tokens["scopes"]
     )
 
-    # Récupérer les données du Google Sheet avec await
-    sheet_response = await get_sheet_data(request.spreadsheet_id, request.range_name, current_user, db)
-    sheet_data = sheet_response.get('data', [])  # Extraire la liste depuis la clé 'data'
-    print(sheet_data, "sheet_data")
-    print(len(sheet_data), "len(sheet_data)")
+    # Récupérer les données du Google Sheet
+    logger.debug(f"Récupération des données du Sheet {spreadsheet_id} avec range {range_name}")
+    sheet_response = await get_sheet_data(spreadsheet_id, range_name, current_user, db)
+    sheet_data = sheet_response.get('data', [])
+    logger.debug(f"Données brutes du Sheet : {sheet_data}")
+
     if not sheet_data or len(sheet_data) < 2:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -50,6 +62,9 @@ async def send_emails(
 
     headers = sheet_data[0]
     rows = sheet_data[1:]
+    logger.debug(f"En-têtes : {headers}")
+    logger.debug(f"Nombre de lignes : {len(rows)}")
+    
     if "Email" not in headers:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -57,14 +72,27 @@ async def send_emails(
         )
 
     email_index = headers.index("Email")
-    
-    # Vérifier les crédits disponibles (compter les lignes avec un email valide)
-    valid_rows = [row for row in rows if len(row) > email_index and row[email_index]]
+    logger.debug(f"Index de la colonne Email : {email_index}")
+
+    # Vérifier les crédits disponibles
+    valid_rows = [row for row in rows if len(row) > email_index and row[email_index].strip()]
+    logger.debug(f"Nombre de lignes valides avec email : {len(valid_rows)}")
     if current_user.credits < len(valid_rows):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Crédits insuffisants. Nécessaire: {len(valid_rows)}, Disponible: {current_user.credits}"
         )
+
+    # Lire les fichiers une seule fois avant la boucle
+    attachments = []
+    for file in files:
+        file_content = await file.read()
+        filename = file.filename
+        mime_type, _ = mimetypes.guess_type(filename)
+        if mime_type is None:
+            mime_type = 'application/octet-stream'  # Par défaut si inconnu
+        attachments.append((filename, file_content, mime_type))
+        logger.debug(f"Fichier préparé : {filename}, type MIME : {mime_type}")
 
     try:
         # Créer le service Gmail
@@ -73,22 +101,25 @@ async def send_emails(
         success_count = 0
         errors = []
 
-        # Itérer directement sur toutes les lignes du Sheet
-        for row in rows:
-            if len(row) <= email_index or not row[email_index]:
-                continue  # Ignorer les lignes sans email valide
+        # Parcourir toutes les lignes
+        for i, row in enumerate(rows):
+            logger.debug(f"Traitement de la ligne {i + 1} : {row}")
+            if len(row) <= email_index or not row[email_index].strip():
+                logger.warning(f"Ligne {i + 1} ignorée : pas d'email valide")
+                continue
 
             try:
-                # Personnaliser le contenu pour chaque ligne
-                personalized_content = request.content
-                for i, header in enumerate(headers):
-                    value = row[i] if i < len(row) else ""
+                # Personnaliser le contenu
+                personalized_content = content
+                for j, header in enumerate(headers):
+                    value = row[j] if j < len(row) else ""
                     personalized_content = personalized_content.replace(f"{{{{{header}}}}}", value)
+                logger.debug(f"Contenu personnalisé pour {row[email_index]} : {personalized_content}")
 
                 # Créer le message
                 message = MIMEMultipart()
                 message["to"] = row[email_index]
-                message["subject"] = request.subject
+                message["subject"] = subject
                 
                 # Corps du message en HTML
                 html_part = MIMEText(personalized_content, "html")
@@ -104,16 +135,28 @@ async def send_emails(
                 signature_part = MIMEText(signature, "html")
                 message.attach(signature_part)
 
+                # Ajouter les pièces jointes
+                for filename, file_content, mime_type in attachments:
+                    if mime_type.startswith('image/'):
+                        part = MIMEImage(file_content, name=filename, _subtype=mime_type.split('/')[1])
+                    else:
+                        part = MIMEApplication(file_content, Name=filename)
+                    part['Content-Disposition'] = f'attachment; filename="{filename}"'
+                    message.attach(part)
+
                 # Encoder et envoyer
                 raw = base64.urlsafe_b64encode(message.as_bytes()).decode()
                 service.users().messages().send(
                     userId="me",
                     body={"raw": raw}
                 ).execute()
+                logger.info(f"Email envoyé avec succès à {row[email_index]}")
 
                 success_count += 1
 
             except Exception as e:
+                error_msg = f"Erreur lors de l'envoi à {row[email_index]} : {str(e)}"
+                logger.error(error_msg)
                 errors.append({
                     "email": row[email_index],
                     "error": str(e)
@@ -123,6 +166,7 @@ async def send_emails(
         if success_count > 0:
             current_user.credits -= success_count
             db.commit()
+            logger.info(f"Crédits mis à jour : {current_user.credits} restants")
 
         return {
             "message": f"{success_count} emails envoyés avec succès",
@@ -133,6 +177,7 @@ async def send_emails(
         }
 
     except Exception as e:
+        logger.error(f"Erreur générale : {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=str(e)

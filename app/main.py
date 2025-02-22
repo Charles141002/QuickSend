@@ -1,11 +1,16 @@
 from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer
+import logging
 
 from app.database import engine
 from app.models import User
-from app.api import auth, emails, credits, sheets  # Ajout de sheets ici
+from app.api import auth, emails, credits, sheets
 from app.config import get_settings
+
+# Configurer les logs
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
 
 settings = get_settings()
 
@@ -56,7 +61,7 @@ app.include_router(
 # Routes pour Google Sheets sécurisées
 app.include_router(
     sheets.router,
-    prefix="/api/sheets",  # Préfixe déjà défini dans sheets.py comme /sheets
+    prefix="/api/sheets",
     tags=["sheets"],
     dependencies=[Depends(security)]
 )

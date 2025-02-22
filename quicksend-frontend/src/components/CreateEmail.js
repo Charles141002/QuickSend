@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import EmailEditor from './EmailEditor';
-import './CreateEmail.css'; // On va créer ce fichier pour les styles
+import './CreateEmail.css';
 
 const CreateEmail = () => {
     const [subject, setSubject] = useState('');
@@ -11,8 +11,8 @@ const CreateEmail = () => {
     const [selectedSheet, setSelectedSheet] = useState('');
     const [variables, setVariables] = useState([]);
     const [message, setMessage] = useState('');
+    const [files, setFiles] = useState([]);
 
-    // Récupérer la liste des Google Sheets au montage
     useEffect(() => {
         const fetchSheets = async () => {
             const token = localStorage.getItem('token');
@@ -30,7 +30,6 @@ const CreateEmail = () => {
         fetchSheets();
     }, []);
 
-    // Récupérer les noms des feuilles quand un Sheet est sélectionné
     useEffect(() => {
         if (!spreadsheetId) return;
 
@@ -51,7 +50,6 @@ const CreateEmail = () => {
         fetchSheetNames();
     }, [spreadsheetId]);
 
-    // Récupérer les en-têtes quand une feuille est sélectionnée
     useEffect(() => {
         if (!spreadsheetId || !selectedSheet) return;
 
@@ -72,6 +70,10 @@ const CreateEmail = () => {
         fetchHeaders();
     }, [spreadsheetId, selectedSheet]);
 
+    const handleFileChange = (e) => {
+        setFiles([...e.target.files]);
+    };
+
     const handleSubmit = async (event) => {
         event.preventDefault();
         const token = localStorage.getItem('token');
@@ -81,19 +83,25 @@ const CreateEmail = () => {
             return;
         }
 
+        const formData = new FormData();
+        formData.append('spreadsheet_id', spreadsheetId);
+        formData.append('range_name', `${selectedSheet}!A1:Z`);
+        formData.append('subject', subject);
+        formData.append('content', content);
+        files.forEach(file => formData.append('files', file));
+
+        // Débogage
+        for (let [key, value] of formData.entries()) {
+            console.log(`${key}: ${value instanceof File ? value.name : value}`);
+        }
+
         try {
             const response = await fetch('http://localhost:8000/api/emails/send', {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}`,
                 },
-                body: JSON.stringify({
-                    spreadsheet_id: spreadsheetId,
-                    range_name: `${selectedSheet}!A1:Z`,
-                    subject,
-                    content,
-                }),
+                body: formData,
             });
 
             if (!response.ok) {
@@ -107,15 +115,17 @@ const CreateEmail = () => {
             setContent('');
             setSpreadsheetId('');
             setSelectedSheet('');
+            setFiles([]);
         } catch (error) {
-            setMessage(`Erreur : ${error.message}`);
+            const errorMessage = error.message || (error.detail ? JSON.stringify(error.detail) : 'Erreur inconnue');
+            setMessage(`Erreur : ${errorMessage}`);
         }
     };
 
     return (
         <div className="create-email-container">
             <h1 className="create-email-title">Créer un Email</h1>
-            <form onSubmit={handleSubmit} className="create-email-form">
+            <form onSubmit={handleSubmit} className="create-email-form" encType="multipart/form-data">
                 <div className="form-group">
                     <input
                         type="text"
@@ -154,6 +164,17 @@ const CreateEmail = () => {
                         </select>
                     </div>
                 )}
+                <div className="form-group">
+                    <input
+                        type="file"
+                        multiple
+                        onChange={handleFileChange}
+                        className="form-input"
+                    />
+                    {files.length > 0 && (
+                        <p>{files.length} fichier(s) sélectionné(s)</p>
+                    )}
+                </div>
                 <EmailEditor content={content} onChange={setContent} variables={variables} />
                 <button type="submit" className="send-button">
                     Envoyer

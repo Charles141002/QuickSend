@@ -1,5 +1,5 @@
 from pydantic import BaseModel, EmailStr
-from typing import List
+from typing import List, Optional
 
 class Recipient(BaseModel):
     name: str
@@ -10,3 +10,4 @@ class EmailRequest(BaseModel):
     range_name: str
     subject: str
     content: str
+    attachments: Optional[List[str]] = None  # Liste optionnelle des chemins ou noms de fichiers
