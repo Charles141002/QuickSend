@@ -1,0 +1,69 @@
+.login-container {
+    max-width: 500px;
+    margin: 100px auto;
+    padding: 40px;
+    background: linear-gradient(135deg, #ffffff, #f9f9f9);
+    border-radius: 15px;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.1);
+    text-align: center;
+    animation: fadeIn 0.5s ease-in-out;
+}
+
+.login-title {
+    font-size: 2.5rem;
+    color: #333;
+    margin-bottom: 20px;
+    font-family: 'Segoe UI', sans-serif;
+    font-weight: 600;
+}
+
+.login-subtitle {
+    font-size: 1.1rem;
+    color: #666;
+    margin-bottom: 30px;
+    font-family: 'Segoe UI', sans-serif;
+}
+
+.login-button {
+    padding: 12px 30px;
+    font-size: 1.2rem;
+    font-weight: bold;
+    color: #fff;
+    background-color: #4285f4; /* Bleu Google */
+    border: none;
+    border-radius: 50px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(66, 133, 244, 0.3);
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.login-button:hover {
+    background-color: #357abd;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(66, 133, 244, 0.4);
+}
+
+.error-message {
+    margin-top: 20px;
+    font-size: 1rem;
+    font-weight: 500;
+    color: #721c24;
+    background-color: #f8d7da;
+    padding: 10px 20px;
+    border-radius: 5px;
+    border: 1px solid #f5c6cb;
+    animation: slideIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}

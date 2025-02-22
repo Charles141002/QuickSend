@@ -1,0 +1,79 @@
+.navbar {
+    background: linear-gradient(90deg, #2c3e50, #34495e); /* Dégradé sombre et élégant */
+    padding: 15px 30px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    animation: slideDown 0.5s ease-in-out;
+}
+
+.navbar-brand {
+    margin-left: 20px;
+}
+
+.navbar-logo {
+    color: #fff;
+    font-size: 1.8rem;
+    font-weight: 700;
+    text-decoration: none;
+    font-family: 'Segoe UI', sans-serif;
+    transition: color 0.3s ease;
+}
+
+.navbar-logo:hover {
+    color: #28a745; /* Vert QuickSend au survol */
+}
+
+.navbar-links {
+    display: flex;
+    gap: 30px;
+    margin-right: 20px;
+}
+
+.navbar-link {
+    color: #fff;
+    font-size: 1.1rem;
+    font-weight: 500;
+    text-decoration: none;
+    padding: 8px 15px;
+    border-radius: 25px;
+    transition: all 0.3s ease;
+    position: relative;
+}
+
+.navbar-link:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+    color: #28a745;
+    transform: translateY(-2px);
+}
+
+.navbar-link::after {
+    content: '';
+    position: absolute;
+    width: 0;
+    height: 2px;
+    background-color: #28a745;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    transition: width 0.3s ease;
+}
+
+.navbar-link:hover::after {
+    width: 60%;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}

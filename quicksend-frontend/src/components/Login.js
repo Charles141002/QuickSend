@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import './Login.css'; // Nouveau fichier CSS pour Login
 
 const Login = () => {
     const [message, setMessage] = useState('');
@@ -15,7 +16,6 @@ const Login = () => {
             if (response.ok) {
                 const data = await response.json();
                 if (data.authorization_url) {
-                    // Rediriger vers l'URL d'autorisation Google
                     window.location.href = data.authorization_url;
                 } else {
                     setMessage('URL d’autorisation manquante dans la réponse.');
@@ -31,14 +31,18 @@ const Login = () => {
     };
 
     return (
-        <div style={{ textAlign: 'center', marginTop: '20px' }}>
+        <div className="login-container">
+            <h1 className="login-title">Connexion</h1>
+            <p className="login-subtitle">Connectez-vous avec votre compte Google pour commencer</p>
             <button
                 onClick={handleLogin}
-                style={{ padding: '10px 20px', fontSize: '16px', cursor: 'pointer' }}
+                className="login-button"
             >
                 Se connecter avec Google
             </button>
-            {message && <p style={{ color: 'red' }}>{message}</p>}
+            {message && (
+                <p className="error-message">{message}</p>
+            )}
         </div>
     );
 };

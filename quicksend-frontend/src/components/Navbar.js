@@ -1,16 +1,17 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import './Navbar.css'; // Nouveau fichier CSS pour la Navbar
 
 const Navbar = () => {
     return (
-        <nav style={{ background: '#333', color: 'white', padding: '10px', display: 'flex', justifyContent: 'space-between' }}>
-            <div>
-                <Link to="/user-home" style={{ color: 'white', textDecoration: 'none' }}>QuickSend</Link>
+        <nav className="navbar">
+            <div className="navbar-brand">
+                <Link to="/user-home" className="navbar-logo">QuickSend</Link>
             </div>
-            <div>
-                <Link to="/user-home" style={{ color: 'white', marginRight: '20px', textDecoration: 'none' }}>Accueil</Link>
-                <Link to="/create-email" style={{ color: 'white', marginRight: '20px', textDecoration: 'none' }}>Nouvel Email</Link>
-                <Link to="/add-credits" style={{ color: 'white', textDecoration: 'none' }}>Ajouter Crédits</Link>
+            <div className="navbar-links">
+                <Link to="/user-home" className="navbar-link">Accueil</Link>
+                <Link to="/create-email" className="navbar-link">Nouvel Email</Link>
+                <Link to="/add-credits" className="navbar-link">Ajouter Crédits</Link>
             </div>
         </nav>
     );

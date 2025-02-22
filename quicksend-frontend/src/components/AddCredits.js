@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
+import './AddCredits.css'; // Nouveau fichier CSS pour AddCredits
 
-// Charger Stripe avec ta clé publique (remplace par ta vraie clé publique Stripe)
-const stripePromise = loadStripe('pk_test_51QuiCOLaNGDU6bg8H7OJf3qWFes0QNnr8J9XpYxZD8eZnjoDIOMKhE2zybQJgjT61TX4JqetNDjsQM5FR3Dx8CP100Otp3TonE'); // Mets ta clé publique Stripe ici depuis ton tableau de bord
+// Charger Stripe avec ta clé publique
+const stripePromise = loadStripe('pk_test_51QuiCOLaNGDU6bg8H7OJf3qWFes0QNnr8J9XpYxZD8eZnjoDIOMKhE2zybQJgjT61TX4JqetNDjsQM5FR3Dx8CP100Otp3TonE');
 
 const AddCredits = () => {
     const [amount, setAmount] = useState(200); // Montant en centimes (2€ par défaut)
@@ -12,9 +13,6 @@ const AddCredits = () => {
     const [loading, setLoading] = useState(false);
     const stripe = useStripe();
     const elements = useElements();
-
-    console.log("stripe", stripe);
-    console.log("elements", elements);
 
     // Calculer les crédits basé sur le montant (logique identique au backend)
     const calculateCredits = (amountCents) => {
@@ -40,14 +38,13 @@ const AddCredits = () => {
         setMessage('');
 
         try {
-            // Appeler ton backend pour créer un PaymentIntent
             const token = localStorage.getItem('token');
-            const response = await fetch(`http://127.0.0.1:8000/api/credits/create-payment-intent?amount=${amount}`, { 
+            const response = await fetch(`http://127.0.0.1:8000/api/credits/create-payment-intent?amount=${amount}`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                }
+                    'Authorization': `Bearer ${token}`,
+                },
             });
 
             console.log('Réponse du serveur :', response);
@@ -57,12 +54,11 @@ const AddCredits = () => {
 
             const { clientSecret } = await response.json();
 
-            // Confirmer le paiement avec Stripe
             const result = await stripe.confirmCardPayment(clientSecret, {
                 payment_method: {
                     card: elements.getElement(CardElement),
                     billing_details: {
-                        name: 'Utilisateur QuickSend', // Optionnel, peut être personnalisé
+                        name: 'Utilisateur QuickSend',
                     },
                 },
             });
@@ -83,11 +79,12 @@ const AddCredits = () => {
     };
 
     return (
-        <div style={{ textAlign: 'center', marginTop: '50px', maxWidth: '600px', margin: '0 auto' }}>
-            <h1>Ajouter des Crédits</h1>
-            <form onSubmit={handleSubmit}>
-                <div style={{ marginBottom: '20px' }}>
-                    <label>Montant (en centimes) : </label>
+        <div className="add-credits-container">
+            <h1 className="add-credits-title">Ajouter des Crédits</h1>
+            <p className="add-credits-subtitle">Rechargez votre compte pour envoyer plus d’emails</p>
+            <form onSubmit={handleSubmit} className="add-credits-form">
+                <div className="form-group">
+                    <label className="form-label">Montant (en centimes) :</label>
                     <input
                         type="number"
                         value={amount}
@@ -95,46 +92,38 @@ const AddCredits = () => {
                         min="200"
                         step="100"
                         required
-                        style={{ padding: '8px', width: '100px', marginLeft: '10px' }}
+                        className="form-input"
                     />
-                    <p>{amount / 100}€ = {credits} crédits</p>
+                    <p className="credits-info">{amount / 100}€ = {credits} crédits</p>
                 </div>
-
-                <CardElement
-                    options={{
-                        style: {
-                            base: {
-                                fontSize: '16px',
-                                color: '#424770',
-                                '::placeholder': {
-                                    color: '#aab7c4',
+                <div className="card-element-container">
+                    <CardElement
+                        options={{
+                            style: {
+                                base: {
+                                    fontSize: '16px',
+                                    color: '#424770',
+                                    '::placeholder': {
+                                        color: '#aab7c4',
+                                    },
+                                },
+                                invalid: {
+                                    color: '#9e2146',
                                 },
                             },
-                            invalid: {
-                                color: '#9e2146',
-                            },
-                        },
-                    }}
-                    style={{ border: '1px solid #ddd', padding: '10px' }}
-                />
-
+                        }}
+                    />
+                </div>
                 <button
                     type="submit"
                     disabled={!stripe || loading}
-                    style={{
-                        padding: '10px 20px',
-                        marginTop: '20px',
-                        backgroundColor: loading ? '#ccc' : '#28a745',
-                        color: 'white',
-                        border: 'none',
-                        cursor: loading ? 'not-allowed' : 'pointer',
-                    }}
+                    className={`pay-button ${loading ? 'disabled' : ''}`}
                 >
                     {loading ? 'Paiement en cours...' : 'Payer'}
                 </button>
             </form>
             {message && (
-                <p style={{ marginTop: '20px', color: message.includes('réussi') ? 'green' : 'red' }}>
+                <p className={`message ${message.includes('réussi') ? 'success' : 'error'}`}>
                     {message}
                 </p>
             )}

@@ -6,6 +6,7 @@ class Recipient(BaseModel):
     email: EmailStr
 
 class EmailRequest(BaseModel):
+    spreadsheet_id: str
+    range_name: str
     subject: str
     content: str
-    recipients: List[Recipient] 

@@ -5,9 +5,13 @@ import TextAlign from '@tiptap/extension-text-align';
 import Underline from '@tiptap/extension-underline';
 import TextStyle from '@tiptap/extension-text-style';
 import Color from '@tiptap/extension-color';
+import { 
+    FaBold, FaItalic, FaUnderline, 
+    FaAlignLeft, FaAlignCenter, FaAlignRight, FaAlignJustify, 
+    FaHeading, FaListUl, FaPaintBrush, FaEraser 
+} from 'react-icons/fa'; // Icônes de react-icons
 
-const EmailEditor = ({ content, onChange }) => {
-    // Initialiser l'éditeur Tiptap
+const EmailEditor = ({ content, onChange, variables = [] }) => {
     const editor = useEditor({
         extensions: [
             StarterKit,
@@ -16,10 +20,10 @@ const EmailEditor = ({ content, onChange }) => {
             TextStyle,
             Color,
         ],
-        content: content || '<p>Contenu de l\'email ici...</p>', // Contenu initial passé en prop
+        content: content || '<p>Contenu de l\'email ici...</p>',
         onUpdate: ({ editor }) => {
             if (onChange) {
-                onChange(editor.getHTML()); // Appeler la fonction onChange avec le contenu HTML
+                onChange(editor.getHTML());
             }
         },
     });
@@ -28,109 +32,140 @@ const EmailEditor = ({ content, onChange }) => {
         return null;
     }
 
+    const insertVariable = (variable) => {
+        editor.chain().focus().insertContent(`{{${variable}}}`).run();
+    };
+
     return (
         <div style={{
-            textAlign: 'center',
-            marginTop: '50px',
-            maxWidth: '800px',
-            margin: '0 auto',
-            height: '50vh', // Hauteur fixe pour que l'éditeur ait un espace à remplir
             display: 'flex',
             flexDirection: 'column',
+            height: '400px',
+            borderRadius: '10px',
+            overflow: 'hidden',
+            boxShadow: '0 4px 15px rgba(0, 0, 0, 0.1)',
+            backgroundColor: '#fff',
         }}>
-            {/* Barre d'outils */}
-            <div style={{ border: '1px solid #ddd', padding: '5px', background: '#f9f9f9', marginBottom: '10px' }}>
+            <div style={{
+                padding: '10px',
+                backgroundColor: '#f1f3f5',
+                borderBottom: '1px solid #ddd',
+                display: 'flex',
+                gap: '8px',
+                flexWrap: 'wrap',
+            }}>
                 <button
                     type="button"
                     onClick={() => editor.chain().focus().toggleBold().run()}
                     disabled={!editor.can().toggleBold()}
-                    style={{ padding: '5px 10px', margin: '0 5px' }}
+                    className="editor-button"
+                    title="Gras"
                 >
-                    Gras
+                    <FaBold />
                 </button>
                 <button
                     type="button"
                     onClick={() => editor.chain().focus().toggleItalic().run()}
                     disabled={!editor.can().toggleItalic()}
-                    style={{ padding: '5px 10px', margin: '0 5px' }}
+                    className="editor-button"
+                    title="Italique"
                 >
-                    Italique
+                    <FaItalic />
                 </button>
                 <button
                     type="button"
                     onClick={() => editor.chain().focus().toggleUnderline().run()}
                     disabled={!editor.can().toggleUnderline()}
-                    style={{ padding: '5px 10px', margin: '0 5px' }}
+                    className="editor-button"
+                    title="Souligner"
                 >
-                    Souligner
+                    <FaUnderline />
                 </button>
                 <button
                     type="button"
                     onClick={() => editor.chain().focus().setTextAlign('left').run()}
-                    style={{ padding: '5px 10px', margin: '0 5px' }}
+                    className="editor-button"
+                    title="Aligner à gauche"
                 >
-                    Gauche
+                    <FaAlignLeft />
                 </button>
                 <button
                     type="button"
                     onClick={() => editor.chain().focus().setTextAlign('center').run()}
-                    style={{ padding: '5px 10px', margin: '0 5px' }}
+                    className="editor-button"
+                    title="Centrer"
                 >
-                    Centre
+                    <FaAlignCenter />
                 </button>
                 <button
                     type="button"
                     onClick={() => editor.chain().focus().setTextAlign('right').run()}
-                    style={{ padding: '5px 10px', margin: '0 5px' }}
+                    className="editor-button"
+                    title="Aligner à droite"
                 >
-                    Droite
+                    <FaAlignRight />
                 </button>
                 <button
                     type="button"
                     onClick={() => editor.chain().focus().setTextAlign('justify').run()}
-                    style={{ padding: '5px 10px', margin: '0 5px' }}
+                    className="editor-button"
+                    title="Justifier"
                 >
-                    Justifié
+                    <FaAlignJustify />
                 </button>
                 <button
                     type="button"
                     onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
-                    style={{ padding: '5px 10px', margin: '0 5px' }}
+                    className="editor-button"
+                    title="Titre H1"
                 >
-                    H1
+                    <FaHeading />
                 </button>
                 <button
                     type="button"
                     onClick={() => editor.chain().focus().toggleBulletList().run()}
-                    style={{ padding: '5px 10px', margin: '0 5px' }}
+                    className="editor-button"
+                    title="Liste à puces"
                 >
-                    Liste
+                    <FaListUl />
                 </button>
                 <button
                     type="button"
                     onClick={() => editor.chain().focus().setColor('#ff0000').run()}
-                    style={{ padding: '5px 10px', margin: '0 5px' }}
+                    className="editor-button"
+                    title="Couleur rouge"
                 >
-                    Rouge
+                    <FaPaintBrush style={{ color: '#ff0000' }} />
                 </button>
                 <button
                     type="button"
                     onClick={() => editor.chain().focus().unsetColor().run()}
-                    style={{ padding: '5px 10px', margin: '0 5px' }}
+                    className="editor-button"
+                    title="Supprimer couleur"
                 >
-                    Normal
+                    <FaEraser />
                 </button>
+                {variables.length > 0 && (
+                    <select
+                        onChange={(e) => insertVariable(e.target.value)}
+                        className="editor-select"
+                    >
+                        <option value="">Insérer une variable</option>
+                        {variables.map((variable) => (
+                            <option key={variable} value={variable}>{variable}</option>
+                        ))}
+                    </select>
+                )}
             </div>
-
-            {/* Contenu de l'éditeur */}
             <EditorContent
                 editor={editor}
                 style={{
-                    border: '1px solid #ddd',
-                    padding: '10px',
-                    flex: 1, // L'éditeur prend tout l'espace restant
-                    textAlign: 'left',
-                    overflow: 'auto', // Ajoute une scrollbar si le contenu dépasse
+                    flex: 1,
+                    padding: '15px',
+                    overflow: 'auto',
+                    fontSize: '1rem',
+                    color: '#333',
+                    backgroundColor: '#fff',
                 }}
             />
         </div>

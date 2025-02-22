@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import './UserHome.css'; // Nouveau fichier CSS pour UserHome
 
 const UserHome = () => {
     const [user, setUser] = useState(null);
@@ -9,25 +10,17 @@ const UserHome = () => {
 
     useEffect(() => {
         const fetchUser = async () => {
-            // Récupérer le token depuis l'URL (après callback Google)
             const urlParams = new URLSearchParams(window.location.search);
             const tokenFromUrl = urlParams.get('token');
-            console.log('Token dans UseHome.js :', tokenFromUrl); // Ajout pour debug
+            console.log('Token dans UserHome.js :', tokenFromUrl);
 
-            // Si un token est dans l'URL, le stocker dans localStorage
             if (tokenFromUrl) {
                 localStorage.setItem('token', tokenFromUrl);
-                console.log("OKKKK")
-                // Nettoyer l'URL pour éviter de réutiliser le token dans l'URL
                 window.history.replaceState({}, document.title, '/user-home');
             }
 
-            console.log("PAS OKKKK")
-
-            // Utiliser le token de localStorage comme source principale
             const token = localStorage.getItem('token');
-
-            console.log('Token dans UseHome.js :', token); // Ajout pour debug
+            console.log('Token dans UserHome.js :', token);
 
             if (!token) {
                 setError('Token manquant. Veuillez vous connecter.');
@@ -64,24 +57,32 @@ const UserHome = () => {
     }, [navigate]);
 
     if (loading) {
-        return <div style={{ textAlign: 'center' }}>Chargement...</div>;
+        return (
+            <div className="user-home-container">
+                <div className="loader">Chargement...</div>
+            </div>
+        );
     }
 
     if (error) {
-        return <div style={{ textAlign: 'center', color: 'red' }}>{error}</div>;
+        return (
+            <div className="user-home-container">
+                <p className="error-message">{error}</p>
+            </div>
+        );
     }
 
     return (
-        <div style={{ textAlign: 'center', marginTop: '50px' }}>
-            <h1>Bienvenue, {user.email}!</h1>
-            <p>Voici vos informations :</p>
-            <pre>{JSON.stringify(user, null, 2)}</pre>
+        <div className="user-home-container">
+            <h1 className="user-home-title">Bienvenue, {user.email} !</h1>
+            <p className="user-home-subtitle">Voici vos informations :</p>
+            <pre className="user-info">{JSON.stringify(user, null, 2)}</pre>
             <button
                 onClick={() => {
                     localStorage.removeItem('token');
                     navigate('/');
                 }}
-                style={{ marginLeft: '10px' }}
+                className="logout-button"
             >
                 Se déconnecter
             </button>

@@ -1,0 +1,103 @@
+.create-email-container {
+    max-width: 900px;
+    margin: 50px auto;
+    padding: 30px;
+    background: linear-gradient(135deg, #ffffff, #f9f9f9);
+    border-radius: 15px;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.1);
+    text-align: center;
+    animation: fadeIn 0.5s ease-in-out;
+}
+
+.create-email-title {
+    font-size: 2.5rem;
+    color: #333;
+    margin-bottom: 30px;
+    font-family: 'Segoe UI', sans-serif;
+    font-weight: 600;
+}
+
+.create-email-form {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.form-group {
+    position: relative;
+}
+
+.form-input, .form-select {
+    width: 100%;
+    padding: 12px 15px;
+    font-size: 1rem;
+    border: 2px solid #ddd;
+    border-radius: 8px;
+    background-color: #fff;
+    transition: all 0.3s ease;
+    box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.05);
+}
+
+.form-input:focus, .form-select:focus {
+    border-color: #28a745;
+    outline: none;
+    box-shadow: 0 0 8px rgba(40, 167, 69, 0.3);
+}
+
+.form-select {
+    appearance: none;
+    background-image: url('data:image/svg+xml;utf8,<svg fill="gray" height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg"><path d="M7 10l5 5 5-5z"/></svg>');
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    padding-right: 35px;
+}
+
+.send-button {
+    padding: 12px 30px;
+    font-size: 1.1rem;
+    font-weight: bold;
+    color: #fff;
+    background-color: #28a745;
+    border: none;
+    border-radius: 50px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);
+}
+
+.send-button:hover {
+    background-color: #218838;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(40, 167, 69, 0.4);
+}
+
+.message {
+    margin-top: 20px;
+    font-size: 1rem;
+    font-weight: 500;
+    padding: 10px 20px;
+    border-radius: 5px;
+    animation: slideIn 0.3s ease-in-out;
+}
+
+.success {
+    color: #155724;
+    background-color: #d4edda;
+    border: 1px solid #c3e6cb;
+}
+
+.error {
+    color: #721c24;
+    background-color: #f8d7da;
+    border: 1px solid #f5c6cb;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}

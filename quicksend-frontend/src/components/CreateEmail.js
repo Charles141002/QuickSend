@@ -1,119 +1,166 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import EmailEditor from './EmailEditor';
+import './CreateEmail.css'; // On va créer ce fichier pour les styles
 
 const CreateEmail = () => {
     const [subject, setSubject] = useState('');
-    const [content, setContent] = useState(''); // État pour stocker le contenu de l'éditeur
-    const [recipientName, setRecipientName] = useState('');
-    const [recipientEmail, setRecipientEmail] = useState('');
-    const [recipients, setRecipients] = useState([]);
+    const [content, setContent] = useState('');
+    const [sheets, setSheets] = useState([]);
+    const [spreadsheetId, setSpreadsheetId] = useState('');
+    const [sheetNames, setSheetNames] = useState([]);
+    const [selectedSheet, setSelectedSheet] = useState('');
+    const [variables, setVariables] = useState([]);
     const [message, setMessage] = useState('');
 
-    const handleAddRecipient = () => {
-        if (recipientName && recipientEmail) {
-            setRecipients([...recipients, { name: recipientName, email: recipientEmail }]);
-            setRecipientName('');
-            setRecipientEmail('');
-        }
-    };
+    // Récupérer la liste des Google Sheets au montage
+    useEffect(() => {
+        const fetchSheets = async () => {
+            const token = localStorage.getItem('token');
+            try {
+                const response = await fetch('http://localhost:8000/api/sheets', {
+                    headers: { 'Authorization': `Bearer ${token}` },
+                });
+                if (!response.ok) throw new Error('Erreur lors de la récupération des Sheets');
+                const data = await response.json();
+                setSheets(data);
+            } catch (error) {
+                setMessage(`Erreur : ${error.message}`);
+            }
+        };
+        fetchSheets();
+    }, []);
+
+    // Récupérer les noms des feuilles quand un Sheet est sélectionné
+    useEffect(() => {
+        if (!spreadsheetId) return;
+
+        const fetchSheetNames = async () => {
+            const token = localStorage.getItem('token');
+            try {
+                const response = await fetch(`http://localhost:8000/api/sheets/${spreadsheetId}/sheet-names`, {
+                    headers: { 'Authorization': `Bearer ${token}` },
+                });
+                if (!response.ok) throw new Error('Erreur lors de la récupération des noms des feuilles');
+                const data = await response.json();
+                setSheetNames(data);
+                setSelectedSheet(data[0] || '');
+            } catch (error) {
+                setMessage(`Erreur : ${error.message}`);
+            }
+        };
+        fetchSheetNames();
+    }, [spreadsheetId]);
+
+    // Récupérer les en-têtes quand une feuille est sélectionnée
+    useEffect(() => {
+        if (!spreadsheetId || !selectedSheet) return;
+
+        const fetchHeaders = async () => {
+            const token = localStorage.getItem('token');
+            try {
+                const response = await fetch(
+                    `http://localhost:8000/api/sheets/${spreadsheetId}/headers?range_name=${selectedSheet}!A1:Z`,
+                    { headers: { 'Authorization': `Bearer ${token}` } }
+                );
+                if (!response.ok) throw new Error('Erreur lors de la récupération des en-têtes');
+                const data = await response.json();
+                setVariables(data.headers);
+            } catch (error) {
+                setMessage(`Erreur : ${error.message}`);
+            }
+        };
+        fetchHeaders();
+    }, [spreadsheetId, selectedSheet]);
 
     const handleSubmit = async (event) => {
         event.preventDefault();
-
         const token = localStorage.getItem('token');
 
-        const response = await fetch('/api/emails/send', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`,
-            },
-            body: JSON.stringify({
-                subject,
-                content, // Envoyer le contenu récupéré de l'éditeur
-                recipients,
-            }),
-        });
+        if (!spreadsheetId || !selectedSheet) {
+            setMessage('Veuillez sélectionner un Google Sheet et une feuille.');
+            return;
+        }
 
-        if (response.ok) {
-            setMessage('Email envoyé avec succès !');
+        try {
+            const response = await fetch('http://localhost:8000/api/emails/send', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`,
+                },
+                body: JSON.stringify({
+                    spreadsheet_id: spreadsheetId,
+                    range_name: `${selectedSheet}!A1:Z`,
+                    subject,
+                    content,
+                }),
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.detail || 'Erreur lors de l’envoi des emails');
+            }
+
+            const result = await response.json();
+            setMessage(result.message || 'Emails envoyés avec succès !');
             setSubject('');
-            setContent(''); // Réinitialiser le contenu
-            setRecipients([]);
-        } else {
-            setMessage('Erreur lors de l’envoi de l’email.');
+            setContent('');
+            setSpreadsheetId('');
+            setSelectedSheet('');
+        } catch (error) {
+            setMessage(`Erreur : ${error.message}`);
         }
     };
 
     return (
-        <div style={{ textAlign: 'center', marginTop: '50px', maxWidth: '800px', margin: '0 auto' }}>
-            <h1>Créer un Email</h1>
-            <form onSubmit={handleSubmit}>
-                {/* Champ Objet */}
-                <input
-                    type="text"
-                    placeholder="Objet"
-                    value={subject}
-                    onChange={(e) => setSubject(e.target.value)}
-                    required
-                    style={{ width: '100%', padding: '8px', marginBottom: '10px' }}
-                />
-
-                {/* Éditeur Tiptap */}
-                <EmailEditor content={content} onChange={setContent} />
-
-                {/* Destinataires */}
-                <h3 style={{ marginTop: '20px' }}>Ajouter un destinataire</h3>
-                <input
-                    type="text"
-                    placeholder="Nom"
-                    value={recipientName}
-                    onChange={(e) => setRecipientName(e.target.value)}
-                    style={{ padding: '8px', margin: '5px' }}
-                />
-                <input
-                    type="email"
-                    placeholder="Email"
-                    value={recipientEmail}
-                    onChange={(e) => setRecipientEmail(e.target.value)}
-                    style={{ padding: '8px', margin: '5px' }}
-                />
-                <button
-                    type="button"
-                    onClick={handleAddRecipient}
-                    style={{ padding: '8px 15px', margin: '5px' }}
-                >
-                    Ajouter
-                </button>
-
-                {/* Liste des destinataires */}
-                {recipients.length > 0 && (
-                    <ul style={{ listStyle: 'none', padding: 0 }}>
-                        {recipients.map((recipient, index) => (
-                            <li key={index}>{`${recipient.name} <${recipient.email}>`}</li>
+        <div className="create-email-container">
+            <h1 className="create-email-title">Créer un Email</h1>
+            <form onSubmit={handleSubmit} className="create-email-form">
+                <div className="form-group">
+                    <input
+                        type="text"
+                        placeholder="Objet de l'email"
+                        value={subject}
+                        onChange={(e) => setSubject(e.target.value)}
+                        required
+                        className="form-input"
+                    />
+                </div>
+                <div className="form-group">
+                    <select
+                        value={spreadsheetId}
+                        onChange={(e) => setSpreadsheetId(e.target.value)}
+                        required
+                        className="form-select"
+                    >
+                        <option value="">Choisir un Google Sheet</option>
+                        {sheets.map((sheet) => (
+                            <option key={sheet.id} value={sheet.id}>{sheet.name}</option>
                         ))}
-                    </ul>
+                    </select>
+                </div>
+                {spreadsheetId && (
+                    <div className="form-group">
+                        <select
+                            value={selectedSheet}
+                            onChange={(e) => setSelectedSheet(e.target.value)}
+                            required
+                            className="form-select"
+                        >
+                            <option value="">Choisir une feuille</option>
+                            {sheetNames.map((name) => (
+                                <option key={name} value={name}>{name}</option>
+                            ))}
+                        </select>
+                    </div>
                 )}
-
-                {/* Bouton Envoyer */}
-                <button
-                    type="submit"
-                    style={{
-                        padding: '10px 20px',
-                        marginTop: '20px',
-                        backgroundColor: '#28a745',
-                        color: 'white',
-                        border: 'none',
-                        cursor: 'pointer',
-                    }}
-                >
+                <EmailEditor content={content} onChange={setContent} variables={variables} />
+                <button type="submit" className="send-button">
                     Envoyer
                 </button>
             </form>
-
-            {/* Message de feedback */}
             {message && (
-                <p style={{ marginTop: '10px', color: message.includes('succès') ? 'green' : 'red' }}>
+                <p className={`message ${message.includes('succès') ? 'success' : 'error'}`}>
                     {message}
                 </p>
             )}

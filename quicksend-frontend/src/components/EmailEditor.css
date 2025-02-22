@@ -1,0 +1,40 @@
+.editor-button {
+    padding: 8px; /* Réduit pour les icônes */
+    font-size: 1rem; /* Taille des icônes */
+    color: #333;
+    background-color: #fff;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px; /* Taille fixe pour uniformité */
+    height: 40px;
+}
+
+.editor-button:hover,
+.editor-button:focus {
+    background-color: #28a745;
+    color: #fff;
+    border-color: #28a745;
+    outline: none;
+}
+
+.editor-button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.editor-select {
+    padding: 6px 12px;
+    font-size: 0.9rem;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    background-color: #fff;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    height: 40px; /* Alignement avec les boutons */
+}
+
