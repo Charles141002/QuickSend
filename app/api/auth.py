@@ -52,8 +52,10 @@ async def login(request: Request):
             "openid",
             "https://www.googleapis.com/auth/userinfo.email",
             "https://www.googleapis.com/auth/userinfo.profile",
-            "https://www.googleapis.com/auth/gmail.send"
-        ]
+            "https://www.googleapis.com/auth/gmail.send",
+            "https://www.googleapis.com/auth/drive.readonly",
+            "https://www.googleapis.com/auth/spreadsheets.readonly"
+            ]
     )
     
     # Récupérer les paramètres de la requête
@@ -92,7 +94,9 @@ async def auth_callback(code: str, db: Session = Depends(get_db)):
                 "openid",
                 "https://www.googleapis.com/auth/userinfo.email",
                 "https://www.googleapis.com/auth/userinfo.profile",
-                "https://www.googleapis.com/auth/gmail.send"
+                "https://www.googleapis.com/auth/gmail.send",
+                "https://www.googleapis.com/auth/drive.readonly",       # Ajouté pour lister les Sheets
+                "https://www.googleapis.com/auth/spreadsheets.readonly" # Ajouté pour lire les données des Sheets
             ]
         )
         flow.redirect_uri = settings.GOOGLE_REDIRECT_URI  # Assure-toi d'utiliser la même redirection
@@ -137,6 +141,7 @@ async def auth_callback(code: str, db: Session = Depends(get_db)):
 
         # Générer le JWT
         access_token = create_access_token(data={"sub": email})
+        print("access_token", access_token)
         
         return RedirectResponse(url=f"http://localhost:3000/user-home?token={access_token}")
 

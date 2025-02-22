@@ -4,7 +4,7 @@ from fastapi.security import HTTPBearer
 
 from app.database import engine
 from app.models import User
-from app.api import auth, emails, credits
+from app.api import auth, emails, credits, sheets  # Ajout de sheets ici
 from app.config import get_settings
 
 settings = get_settings()
@@ -20,8 +20,6 @@ app = FastAPI(
     version="1.0.0"
 )
 
-
-
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  # À modifier en production
@@ -32,6 +30,7 @@ app.add_middleware(
 
 # Routes
 app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
+
 app.include_router(
     emails.router,
     prefix="/api/emails",
@@ -54,6 +53,14 @@ app.include_router(
     dependencies=[Depends(security)]
 )
 
+# Routes pour Google Sheets sécurisées
+app.include_router(
+    sheets.router,
+    prefix="/api/sheets",  # Préfixe déjà défini dans sheets.py comme /sheets
+    tags=["sheets"],
+    dependencies=[Depends(security)]
+)
+
 @app.get("/")
 def read_root():
-    return {"message": "Welcome to QuickSend API"} 
+    return {"message": "Welcome to QuickSend API"}

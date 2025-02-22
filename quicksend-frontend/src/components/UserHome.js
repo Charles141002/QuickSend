@@ -76,7 +76,6 @@ const UserHome = () => {
             <h1>Bienvenue, {user.email}!</h1>
             <p>Voici vos informations :</p>
             <pre>{JSON.stringify(user, null, 2)}</pre>
-            <button onClick={() => navigate('/create-email')}>Créer un Email</button>
             <button
                 onClick={() => {
                     localStorage.removeItem('token');

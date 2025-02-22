@@ -15,13 +15,13 @@ function App() {
             <div className="App">
                 {token && <Navbar />}
                 <Routes>
-                    <Route path="/" element={!token ? <Navigate to="/user-home" /> : <Home />} />
+                    <Route path="/" element={ <Home /> } />
                     <Route path="/user-home" element={<UserHome /> } /> {/* On laisse UserHome gérer la logique */}
                     <Route
                         path="/create-email"
-                        element={token ? <CreateEmail /> : <Navigate to="/" />}
+                        element={<CreateEmail />}
                     />
-                    <Route path="/add-credits" element={token ? <AddCredits /> : <Navigate to="/" />} /> {/* Nouvelle route */}
+                    <Route path="/add-credits" element={ <AddCredits />} /> {/* Nouvelle route */}
                 </Routes>
             </div>
         </Router>
