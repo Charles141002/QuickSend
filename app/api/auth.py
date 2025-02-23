@@ -141,7 +141,6 @@ async def auth_callback(code: str, db: Session = Depends(get_db)):
 
         # Générer le JWT
         access_token = create_access_token(data={"sub": email})
-        print("access_token", access_token)
         
         return RedirectResponse(url=f"http://localhost:3000/user-home?token={access_token}")
 

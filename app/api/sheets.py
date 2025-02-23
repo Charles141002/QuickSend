@@ -35,8 +35,6 @@ async def list_user_sheets(current_user: User = Depends(get_current_user)):
     """Liste tous les Google Sheets accessibles à l'utilisateur connecté"""
     if not current_user.google_tokens or "token" not in current_user.google_tokens:
         raise HTTPException(status_code=400, detail="Connexion Google requise. Veuillez vous connecter via OAuth.")
-
-    print("current_user.google_tokens", current_user.google_tokens)
     
     credentials = Credentials(
         token=current_user.google_tokens["token"],

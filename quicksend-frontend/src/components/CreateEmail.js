@@ -13,6 +13,8 @@ const CreateEmail = () => {
     const [variables, setVariables] = useState([]);
     const [files, setFiles] = useState([]);
     const [message, setMessage] = useState('');
+    const [showPreview, setShowPreview] = useState(false); // État pour la modale de prévisualisation
+    const [previewData, setPreviewData] = useState({ subject: '', body: '' }); // Données de prévisualisation
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -136,6 +138,64 @@ const CreateEmail = () => {
         }
     };
 
+    // Générer la prévisualisation du premier email
+    const generatePreview = async () => {
+        const token = localStorage.getItem('token');
+        if (!token || !spreadsheetId || !selectedSheet) {
+            setMessage('Veuillez sélectionner un Google Sheet, une feuille, et vous connecter.');
+            return;
+        }
+
+        try {
+            // Récupérer les données complètes du Google Sheet
+            const response = await fetch(
+                `http://localhost:8000/api/sheets/${spreadsheetId}/data?range_name=${selectedSheet}!A1:Z`,
+                { headers: { 'Authorization': `Bearer ${token}` } }
+            );
+            if (!response.ok) throw new Error('Erreur lors de la récupération des données du Sheet');
+            const sheetData = await response.json();
+            const data = sheetData.data || [];
+
+            if (!data || data.length < 2) {
+                setMessage('Le Google Sheet est vide ou mal configuré.');
+                return;
+            }
+
+            const headers = data[0]; // En-têtes (colonnes)
+            const firstRow = data[1]; // Première ligne de données (premier destinataire)
+
+            if (!firstRow || firstRow.length === 0) {
+                setMessage('Aucune donnée trouvée pour le premier destinataire.');
+                return;
+            }
+
+            // Créer un objet avec les valeurs du premier destinataire
+            const values = {};
+            headers.forEach((header, index) => {
+                values[header] = firstRow[index] || '';
+            });
+
+            // Remplacer les variables dans le sujet et le contenu
+            let previewSubject = subject;
+            let previewBody = content;
+
+            variables.forEach((variable) => {
+                const value = values[variable] || `Valeur de ${variable} non trouvée`;
+                previewSubject = previewSubject.replace(`{{${variable}}}`, value);
+                previewBody = previewBody.replace(`{{${variable}}}`, value);
+            });
+
+            // Stocker les données de prévisualisation
+            setPreviewData({
+                subject: previewSubject,
+                body: previewBody,
+            });
+            setShowPreview(true);
+        } catch (error) {
+            setMessage(`Erreur lors de la prévisualisation : ${error.message}`);
+        }
+    };
+
     if (!localStorage.getItem('token')) {
         return navigate('/');
     }
@@ -191,14 +251,33 @@ const CreateEmail = () => {
                     />
                 </div>
                 <EmailEditor content={content} onChange={setContent} variables={variables} />
-                <button type="submit" className="send-button">
-                    Envoyer
-                </button>
+                <div className="button-group">
+                    <button type="submit" className="send-button">
+                        Envoyer
+                    </button>
+                    <button type="button" onClick={generatePreview} className="preview-button">
+                        Prévisualiser
+                    </button>
+                </div>
             </form>
             {message && (
                 <p className={`message ${message.includes('succès') ? 'success' : 'error'}`}>
                     {message}
                 </p>
+            )}
+
+            {/* Modale de prévisualisation */}
+            {showPreview && (
+                <div className="preview-modal" onClick={() => setShowPreview(false)}>
+                    <div className="preview-content" onClick={(e) => e.stopPropagation()}>
+                        <h3>Prévisualisation du premier email</h3>
+                        <h4>Objet : {previewData.subject}</h4>
+                        <div className="preview-body" dangerouslySetInnerHTML={{ __html: previewData.body }} />
+                        <button onClick={() => setShowPreview(false)} className="preview-close">
+                            Fermer
+                        </button>
+                    </div>
+                </div>
             )}
         </div>
     );

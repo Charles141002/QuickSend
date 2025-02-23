@@ -107,3 +107,101 @@
     border: none; /* Supprime la bordure par défaut si voulu */
     background-color: transparent;
 }
+
+/* ... (styles existants) */
+
+.button-group {
+    display: flex;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+.preview-button {
+    padding: 8px 16px;
+    background-color: #f1f3f4;
+    border: 1px solid #e0e0e0;
+    border-radius: 2px;
+    color: #5f6368;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 0.9rem;
+}
+
+.preview-button:hover {
+    background-color: #e0e0e0;
+    color: #202124;
+}
+
+/* Styles pour la modale de prévisualisation */
+.preview-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.preview-content {
+    background-color: #fff;
+    padding: 25px; /* Augmentation de la marge intérieure pour plus d’espace */
+    border-radius: 8px; /* Coins légèrement plus arrondis pour un look moderne */
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2); /* Ombre plus marquée pour un effet visuel */
+    width: 600px; /* Augmentation de la largeur pour plus de place */
+    max-width: 90%; /* Limite maximale pour les écrans petits */
+    position: relative;
+    min-height: 400px; /* Hauteur minimale pour plus d’espace vertical */
+}
+
+.preview-content h3 {
+    margin: 0 0 15px 0;
+    color: #202124;
+    font-size: 1.5rem; /* Taille de police augmentée pour un titre plus gros */
+    font-weight: 500;
+    white-space: nowrap; /* Pas de retour à la ligne pour le titre */
+    overflow: hidden;
+    text-overflow: ellipsis; /* Points de suspension si le texte dépasse */
+}
+
+.preview-content h4 {
+    margin: 0 0 20px 0;
+    color: #202124;
+    font-size: 1.3rem; /* Taille de police augmentée pour l’objet */
+    font-weight: 400;
+    white-space: nowrap; /* Pas de retour à la ligne pour l’objet */
+    overflow: hidden;
+    text-overflow: ellipsis; /* Points de suspension si le texte dépasse */
+}
+
+.preview-body {
+    margin: 0 0 25px 0;
+    color: #202124;
+    font-size: 1.1rem; /* Taille de police augmentée pour le corps */
+    line-height: 1.6; /* Ligne légèrement plus espacée pour la lisibilité */
+    word-wrap: break-word; /* Autorise les retours à la ligne pour les mots longs */
+    overflow-wrap: break-word; /* Synonyme pour une meilleure compatibilité */
+    max-height: 300px; /* Hauteur maximale ajustée pour plus d’espace */
+    overflow: auto; /* Scroll si le contenu dépasse */
+    text-align: left; /* Alignement à gauche pour cohérence */
+    white-space: pre-wrap; /* Préserve les espaces et retours à la ligne du HTML, mais permet des retours naturels */
+}
+
+.preview-close {
+    padding: 10px 20px; /* Bouton "Fermer" un peu plus grand */
+    background-color: #f1f3f4;
+    border: 1px solid #e0e0e0;
+    border-radius: 4px; /* Coins légèrement plus arrondis */
+    color: #5f6368;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 1rem; /* Taille de police augmentée */
+}
+
+.preview-close:hover {
+    background-color: #e0e0e0;
+    color: #202124;
+}
