@@ -1,20 +1,27 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
-import './AddCredits.css'; // Nouveau fichier CSS pour AddCredits
+import './AddCredits.css';
 
-// Charger Stripe avec ta clé publique
 const stripePromise = loadStripe('pk_test_51QuiCOLaNGDU6bg8H7OJf3qWFes0QNnr8J9XpYxZD8eZnjoDIOMKhE2zybQJgjT61TX4JqetNDjsQM5FR3Dx8CP100Otp3TonE');
 
 const AddCredits = () => {
-    const [amount, setAmount] = useState(200); // Montant en centimes (2€ par défaut)
-    const [credits, setCredits] = useState(100); // Crédits calculés
+    const [amount, setAmount] = useState(200);
+    const [credits, setCredits] = useState(100);
     const [message, setMessage] = useState('');
     const [loading, setLoading] = useState(false);
     const stripe = useStripe();
     const elements = useElements();
+    const navigate = useNavigate();
 
-    // Calculer les crédits basé sur le montant (logique identique au backend)
+    useEffect(() => {
+        const token = localStorage.getItem('token');
+        if (!token) {
+            navigate('/');
+        }
+    }, [navigate]);
+
     const calculateCredits = (amountCents) => {
         const amountEuros = amountCents / 100;
         if (amountEuros >= 10) return amountEuros * 60;
@@ -22,23 +29,27 @@ const AddCredits = () => {
         return amountEuros * 50;
     };
 
-    // Gérer le changement de montant
     const handleAmountChange = (e) => {
         const newAmount = parseInt(e.target.value) || 0;
         setAmount(newAmount);
         setCredits(calculateCredits(newAmount));
     };
 
-    // Soumettre le paiement
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (!stripe || !elements) return;
+
+        const token = localStorage.getItem('token');
+        if (!token) {
+            setMessage('Veuillez vous connecter pour continuer.');
+            navigate('/');
+            return;
+        }
 
         setLoading(true);
         setMessage('');
 
         try {
-            const token = localStorage.getItem('token');
             const response = await fetch(`http://127.0.0.1:8000/api/credits/create-payment-intent?amount=${amount}`, {
                 method: 'POST',
                 headers: {
@@ -47,26 +58,23 @@ const AddCredits = () => {
                 },
             });
 
-            console.log('Réponse du serveur :', response);
             if (!response.ok) {
-                throw new Error('Erreur lors de la création du PaymentIntent');
+                const errorData = await response.json();
+                throw new Error(errorData.detail || 'Erreur lors de la création du paiement');
             }
 
             const { clientSecret } = await response.json();
-
             const result = await stripe.confirmCardPayment(clientSecret, {
                 payment_method: {
                     card: elements.getElement(CardElement),
-                    billing_details: {
-                        name: 'Utilisateur QuickSend',
-                    },
+                    billing_details: { name: 'Utilisateur QuickSend' },
                 },
             });
 
             if (result.error) {
-                setMessage(`Erreur de paiement : ${result.error.message}`);
+                setMessage(`Erreur : ${result.error.message}`);
             } else if (result.paymentIntent.status === 'succeeded') {
-                setMessage('Paiement réussi ! Vos crédits ont été ajoutés.');
+                setMessage('Paiement réussi ! Crédits ajoutés.');
                 setAmount(200);
                 setCredits(100);
                 elements.getElement(CardElement).clear();
@@ -97,22 +105,7 @@ const AddCredits = () => {
                     <p className="credits-info">{amount / 100}€ = {credits} crédits</p>
                 </div>
                 <div className="card-element-container">
-                    <CardElement
-                        options={{
-                            style: {
-                                base: {
-                                    fontSize: '16px',
-                                    color: '#424770',
-                                    '::placeholder': {
-                                        color: '#aab7c4',
-                                    },
-                                },
-                                invalid: {
-                                    color: '#9e2146',
-                                },
-                            },
-                        }}
-                    />
+                    <CardElement options={{ /* ...options... */ }} />
                 </div>
                 <button
                     type="submit"
@@ -131,7 +124,6 @@ const AddCredits = () => {
     );
 };
 
-// Envelopper dans Elements pour utiliser Stripe
 const AddCreditsWithStripe = () => (
     <Elements stripe={stripePromise}>
         <AddCredits />

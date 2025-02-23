@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import EmailEditor from './EmailEditor';
 import './CreateEmail.css';
 
@@ -11,11 +12,17 @@ const CreateEmail = () => {
     const [selectedSheet, setSelectedSheet] = useState('');
     const [variables, setVariables] = useState([]);
     const [message, setMessage] = useState('');
-    const [files, setFiles] = useState([]);
+    const navigate = useNavigate();
 
     useEffect(() => {
+        const token = localStorage.getItem('token');
+        if (!token) {
+            setMessage('Veuillez vous connecter pour créer un email.');
+            navigate('/');
+            return;
+        }
+
         const fetchSheets = async () => {
-            const token = localStorage.getItem('token');
             try {
                 const response = await fetch('http://localhost:8000/api/sheets', {
                     headers: { 'Authorization': `Bearer ${token}` },
@@ -28,13 +35,15 @@ const CreateEmail = () => {
             }
         };
         fetchSheets();
-    }, []);
+    }, [navigate]);
 
     useEffect(() => {
         if (!spreadsheetId) return;
 
+        const token = localStorage.getItem('token');
+        if (!token) return navigate('/');
+
         const fetchSheetNames = async () => {
-            const token = localStorage.getItem('token');
             try {
                 const response = await fetch(`http://localhost:8000/api/sheets/${spreadsheetId}/sheet-names`, {
                     headers: { 'Authorization': `Bearer ${token}` },
@@ -48,13 +57,15 @@ const CreateEmail = () => {
             }
         };
         fetchSheetNames();
-    }, [spreadsheetId]);
+    }, [spreadsheetId, navigate]);
 
     useEffect(() => {
         if (!spreadsheetId || !selectedSheet) return;
 
+        const token = localStorage.getItem('token');
+        if (!token) return navigate('/');
+
         const fetchHeaders = async () => {
-            const token = localStorage.getItem('token');
             try {
                 const response = await fetch(
                     `http://localhost:8000/api/sheets/${spreadsheetId}/headers?range_name=${selectedSheet}!A1:Z`,
@@ -68,40 +79,35 @@ const CreateEmail = () => {
             }
         };
         fetchHeaders();
-    }, [spreadsheetId, selectedSheet]);
-
-    const handleFileChange = (e) => {
-        setFiles([...e.target.files]);
-    };
+    }, [spreadsheetId, selectedSheet, navigate]);
 
     const handleSubmit = async (event) => {
         event.preventDefault();
         const token = localStorage.getItem('token');
+        if (!token) {
+            setMessage('Session expirée. Veuillez vous reconnecter.');
+            navigate('/');
+            return;
+        }
 
         if (!spreadsheetId || !selectedSheet) {
             setMessage('Veuillez sélectionner un Google Sheet et une feuille.');
             return;
         }
 
-        const formData = new FormData();
-        formData.append('spreadsheet_id', spreadsheetId);
-        formData.append('range_name', `${selectedSheet}!A1:Z`);
-        formData.append('subject', subject);
-        formData.append('content', content);
-        files.forEach(file => formData.append('files', file));
-
-        // Débogage
-        for (let [key, value] of formData.entries()) {
-            console.log(`${key}: ${value instanceof File ? value.name : value}`);
-        }
-
         try {
             const response = await fetch('http://localhost:8000/api/emails/send', {
                 method: 'POST',
                 headers: {
+                    'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}`,
                 },
-                body: formData,
+                body: JSON.stringify({
+                    spreadsheet_id: spreadsheetId,
+                    range_name: `${selectedSheet}!A1:Z`,
+                    subject,
+                    content,
+                }),
             });
 
             if (!response.ok) {
@@ -115,17 +121,19 @@ const CreateEmail = () => {
             setContent('');
             setSpreadsheetId('');
             setSelectedSheet('');
-            setFiles([]);
         } catch (error) {
-            const errorMessage = error.message || (error.detail ? JSON.stringify(error.detail) : 'Erreur inconnue');
-            setMessage(`Erreur : ${errorMessage}`);
+            setMessage(`Erreur : ${error.message}`);
         }
     };
+
+    if (!localStorage.getItem('token')) {
+        return navigate('/');
+    }
 
     return (
         <div className="create-email-container">
             <h1 className="create-email-title">Créer un Email</h1>
-            <form onSubmit={handleSubmit} className="create-email-form" encType="multipart/form-data">
+            <form onSubmit={handleSubmit} className="create-email-form">
                 <div className="form-group">
                     <input
                         type="text"
@@ -164,17 +172,6 @@ const CreateEmail = () => {
                         </select>
                     </div>
                 )}
-                <div className="form-group">
-                    <input
-                        type="file"
-                        multiple
-                        onChange={handleFileChange}
-                        className="form-input"
-                    />
-                    {files.length > 0 && (
-                        <p>{files.length} fichier(s) sélectionné(s)</p>
-                    )}
-                </div>
                 <EmailEditor content={content} onChange={setContent} variables={variables} />
                 <button type="submit" className="send-button">
                     Envoyer
