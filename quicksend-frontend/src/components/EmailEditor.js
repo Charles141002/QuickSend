@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { EditorContent, useEditor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import TextAlign from '@tiptap/extension-text-align';
@@ -9,7 +9,7 @@ import {
     FaBold, FaItalic, FaUnderline, 
     FaAlignLeft, FaAlignCenter, FaAlignRight, FaAlignJustify, 
     FaHeading, FaListUl, FaPaintBrush, FaEraser 
-} from 'react-icons/fa'; // Icônes de react-icons
+} from 'react-icons/fa';
 
 const EmailEditor = ({ content, onChange, variables = [] }) => {
     const editor = useEditor({
@@ -27,6 +27,13 @@ const EmailEditor = ({ content, onChange, variables = [] }) => {
             }
         },
     });
+
+    // Synchroniser l'éditeur avec la prop content lorsqu'elle change
+    useEffect(() => {
+        if (editor && content !== editor.getHTML()) {
+            editor.commands.setContent(content || '');
+        }
+    }, [editor, content]);
 
     if (!editor) {
         return null;

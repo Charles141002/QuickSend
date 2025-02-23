@@ -5,12 +5,13 @@ import './CreateEmail.css';
 
 const CreateEmail = () => {
     const [subject, setSubject] = useState('');
-    const [content, setContent] = useState('');
+    const [content, setContent] = useState(''); // État pour le contenu de l'éditeur
     const [sheets, setSheets] = useState([]);
     const [spreadsheetId, setSpreadsheetId] = useState('');
     const [sheetNames, setSheetNames] = useState([]);
     const [selectedSheet, setSelectedSheet] = useState('');
     const [variables, setVariables] = useState([]);
+    const [files, setFiles] = useState([]);
     const [message, setMessage] = useState('');
     const navigate = useNavigate();
 
@@ -81,6 +82,10 @@ const CreateEmail = () => {
         fetchHeaders();
     }, [spreadsheetId, selectedSheet, navigate]);
 
+    const handleFileChange = (event) => {
+        setFiles(event.target.files);
+    };
+
     const handleSubmit = async (event) => {
         event.preventDefault();
         const token = localStorage.getItem('token');
@@ -95,19 +100,22 @@ const CreateEmail = () => {
             return;
         }
 
+        const formData = new FormData();
+        formData.append('spreadsheet_id', spreadsheetId);
+        formData.append('range_name', `${selectedSheet}!A1:Z`);
+        formData.append('subject', subject);
+        formData.append('content', content);
+        for (let i = 0; i < files.length; i++) {
+            formData.append('files', files[i]);
+        }
+
         try {
             const response = await fetch('http://localhost:8000/api/emails/send', {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}`,
                 },
-                body: JSON.stringify({
-                    spreadsheet_id: spreadsheetId,
-                    range_name: `${selectedSheet}!A1:Z`,
-                    subject,
-                    content,
-                }),
+                body: formData,
             });
 
             if (!response.ok) {
@@ -117,10 +125,12 @@ const CreateEmail = () => {
 
             const result = await response.json();
             setMessage(result.message || 'Emails envoyés avec succès !');
+            // Réinitialisation des champs après succès
             setSubject('');
-            setContent('');
+            setContent(''); // Réinitialise le contenu de l'éditeur
             setSpreadsheetId('');
             setSelectedSheet('');
+            setFiles([]);
         } catch (error) {
             setMessage(`Erreur : ${error.message}`);
         }
@@ -133,7 +143,7 @@ const CreateEmail = () => {
     return (
         <div className="create-email-container">
             <h1 className="create-email-title">Créer un Email</h1>
-            <form onSubmit={handleSubmit} className="create-email-form">
+            <form onSubmit={handleSubmit} className="create-email-form" encType="multipart/form-data">
                 <div className="form-group">
                     <input
                         type="text"
@@ -172,6 +182,14 @@ const CreateEmail = () => {
                         </select>
                     </div>
                 )}
+                <div className="form-group">
+                    <input
+                        type="file"
+                        multiple
+                        onChange={handleFileChange}
+                        className="form-input"
+                    />
+                </div>
                 <EmailEditor content={content} onChange={setContent} variables={variables} />
                 <button type="submit" className="send-button">
                     Envoyer

@@ -101,3 +101,9 @@
     from { opacity: 0; transform: translateY(10px); }
     to { opacity: 1; transform: translateY(0); }
 }
+
+.form-input[type="file"] {
+    padding: 10px;
+    border: none; /* Supprime la bordure par défaut si voulu */
+    background-color: transparent;
+}
