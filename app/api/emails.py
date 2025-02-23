@@ -10,11 +10,12 @@ import base64
 from typing import List
 import logging
 import mimetypes
-
+import uuid
 from ..database import get_db
 from ..models.user import User
+from ..models.email_tracking import EmailTracking  # Ajoutez cette ligne
 from .auth import get_current_user
-from ..api.sheets import get_sheet_data
+from ..api.sheets import get_google_service  # Importez pour réutiliser
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -26,18 +27,13 @@ async def send_emails(
     subject: str = Form(...),
     content: str = Form(...),
     files: List[UploadFile] = File(default=[]),
+    track_emails: bool = Form(False),  # Nouveau paramètre pour activer le suivi
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Envoie des emails personnalisés avec pièces jointes en utilisant un Google Sheet"""
-    logger.debug(f"spreadsheet_id: {spreadsheet_id}, range_name: {range_name}, subject: {subject}, content: {content}")
-    logger.debug(f"Fichiers: {[file.filename for file in files]}")
-
+    """Envoie des emails personnalisés avec suivi optionnel des ouvertures."""
     if not current_user.google_tokens or "token" not in current_user.google_tokens:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Tokens Google non trouvés. Veuillez vous reconnecter."
-        )
+        raise HTTPException(status_code=401, detail="Tokens Google non trouvés.")
 
     credentials = Credentials(
         token=current_user.google_tokens["token"],
@@ -49,136 +45,109 @@ async def send_emails(
     )
 
     # Récupérer les données du Google Sheet
-    logger.debug(f"Récupération des données du Sheet {spreadsheet_id} avec range {range_name}")
-    sheet_response = await get_sheet_data(spreadsheet_id, range_name, current_user, db)
-    sheet_data = sheet_response.get('data', [])
-    logger.debug(f"Données brutes du Sheet : {sheet_data}")
+    sheets_service = get_google_service("sheets", "v4", credentials)
+    result = sheets_service.spreadsheets().values().get(
+        spreadsheetId=spreadsheet_id,
+        range=range_name
+    ).execute()
+    sheet_data = result.get('values', [])
 
     if not sheet_data or len(sheet_data) < 2:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Le Google Sheet est vide ou mal configuré"
-        )
+        raise HTTPException(status_code=400, detail="Le Google Sheet est vide ou mal configuré")
 
     headers = sheet_data[0]
     rows = sheet_data[1:]
-    logger.debug(f"En-têtes : {headers}")
-    logger.debug(f"Nombre de lignes : {len(rows)}")
-    
     if "Email" not in headers:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="La colonne 'Email' est requise dans le Sheet"
-        )
+        raise HTTPException(status_code=400, detail="La colonne 'Email' est requise")
+    
+    # Ajouter la colonne "Opened" si elle n'existe pas
+    if "Opened" not in headers:
+        headers.append("Opened")
+        sheets_service.spreadsheets().values().update(
+            spreadsheetId=spreadsheet_id,
+            range=f"{range_name.split('!')[0]}!A1:{chr(65 + len(headers) - 1)}1",
+            valueInputOption="RAW",
+            body={"values": [headers]}
+        ).execute()
 
     email_index = headers.index("Email")
-    logger.debug(f"Index de la colonne Email : {email_index}")
-
-    # Vérifier les crédits disponibles
     valid_rows = [row for row in rows if len(row) > email_index and row[email_index].strip()]
-    logger.debug(f"Nombre de lignes valides avec email : {len(valid_rows)}")
     if current_user.credits < len(valid_rows):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Crédits insuffisants. Nécessaire: {len(valid_rows)}, Disponible: {current_user.credits}"
-        )
+        raise HTTPException(status_code=400, detail=f"Crédits insuffisants: {len(valid_rows)} nécessaires, {current_user.credits} disponibles")
 
-    # Lire les fichiers une seule fois avant la boucle
-    attachments = []
-    for file in files:
-        file_content = await file.read()
-        filename = file.filename
-        mime_type, _ = mimetypes.guess_type(filename)
-        if mime_type is None:
-            mime_type = 'application/octet-stream'  # Par défaut si inconnu
-        attachments.append((filename, file_content, mime_type))
-        logger.debug(f"Fichier préparé : {filename}, type MIME : {mime_type}")
+    # Préparer les pièces jointes
+    attachments = [(file.filename, await file.read(), mimetypes.guess_type(file.filename)[0] or 'application/octet-stream') for file in files]
 
-    try:
-        # Créer le service Gmail
-        service = build('gmail', 'v1', credentials=credentials)
+    # Service Gmail
+    gmail_service = build('gmail', 'v1', credentials=credentials)
+    success_count = 0
+    errors = []
 
-        success_count = 0
-        errors = []
+    for i, row in enumerate(rows):
+        if len(row) <= email_index or not row[email_index].strip():
+            continue
 
-        # Parcourir toutes les lignes
-        for i, row in enumerate(rows):
-            logger.debug(f"Traitement de la ligne {i + 1} : {row}")
-            if len(row) <= email_index or not row[email_index].strip():
-                logger.warning(f"Ligne {i + 1} ignorée : pas d'email valide")
-                continue
+        try:
+            # Personnaliser le contenu
+            personalized_content = content
+            for j, header in enumerate(headers[:-1]):  # Exclure "Opened"
+                value = row[j] if j < len(row) else ""
+                personalized_content = personalized_content.replace(f"{{{{{header}}}}}", value)
 
-            try:
-                # Personnaliser le contenu
-                personalized_content = content
-                for j, header in enumerate(headers):
-                    value = row[j] if j < len(row) else ""
-                    personalized_content = personalized_content.replace(f"{{{{{header}}}}}", value)
-                logger.debug(f"Contenu personnalisé pour {row[email_index]} : {personalized_content}")
+            message = MIMEMultipart()
+            message["to"] = row[email_index]
+            message["subject"] = subject
+            html_part = MIMEText(personalized_content, "html")
+            message.attach(html_part)
 
-                # Créer le message
-                message = MIMEMultipart()
-                message["to"] = row[email_index]
-                message["subject"] = subject
-                
-                # Corps du message en HTML
-                html_part = MIMEText(personalized_content, "html")
-                message.attach(html_part)
+            # Ajouter le pixel de suivi si activé
+            if track_emails:
+                track_id = str(uuid.uuid4())
+                tracking_pixel = f'<img src="https://4e48-2a01-e0a-130-2470-550f-8a4d-95b3-9dfd.ngrok-free.app/public/api/emails/track/open/{track_id}" width="100" height="100" style="background-color: black;" alt="Suivi d\'ouverture" />'
+                message.attach(MIMEText(tracking_pixel, "html"))
+                # Enregistrer le tracking
+                db.add(EmailTracking(
+                    user_id=current_user.id,
+                    email=row[email_index],
+                    track_id=track_id,
+                    spreadsheet_id=spreadsheet_id,
+                    sheet_name=range_name.split('!')[0],
+                    row_index=i + 2  # 1-based index + header row
+                ))
 
-                # Signature
-                signature = """
-                <br><br>
-                <div style="color: #666; font-size: 12px; margin-top: 20px;">
-                    Envoyé avec QuickSend – <a href="https://quicksend.app">Envoyez vos emails facilement</a>
-                </div>
-                """
-                signature_part = MIMEText(signature, "html")
-                message.attach(signature_part)
+            # Signature
+            signature = """
+            <br><br>
+            <div style="color: #666; font-size: 12px; margin-top: 20px;">
+                Envoyé avec QuickSend – <a href="https://quicksend.app">Envoyez vos emails facilement</a>
+            </div>
+            """
+            message.attach(MIMEText(signature, "html"))
 
-                # Ajouter les pièces jointes
-                for filename, file_content, mime_type in attachments:
-                    if mime_type.startswith('image/'):
-                        part = MIMEImage(file_content, name=filename, _subtype=mime_type.split('/')[1])
-                    else:
-                        part = MIMEApplication(file_content, Name=filename)
-                    part['Content-Disposition'] = f'attachment; filename="{filename}"'
-                    message.attach(part)
+            # Pièces jointes
+            for filename, file_content, mime_type in attachments:
+                if mime_type.startswith('image/'):
+                    part = MIMEImage(file_content, name=filename, _subtype=mime_type.split('/')[1])
+                else:
+                    part = MIMEApplication(file_content, Name=filename)
+                part['Content-Disposition'] = f'attachment; filename="{filename}"'
+                message.attach(part)
 
-                # Encoder et envoyer
-                raw = base64.urlsafe_b64encode(message.as_bytes()).decode()
-                service.users().messages().send(
-                    userId="me",
-                    body={"raw": raw}
-                ).execute()
-                logger.info(f"Email envoyé avec succès à {row[email_index]}")
+            raw = base64.urlsafe_b64encode(message.as_bytes()).decode()
+            gmail_service.users().messages().send(userId="me", body={"raw": raw}).execute()
+            success_count += 1
 
-                success_count += 1
+        except Exception as e:
+            errors.append({"email": row[email_index], "error": str(e)})
 
-            except Exception as e:
-                error_msg = f"Erreur lors de l'envoi à {row[email_index]} : {str(e)}"
-                logger.error(error_msg)
-                errors.append({
-                    "email": row[email_index],
-                    "error": str(e)
-                })
+    if success_count > 0:
+        current_user.credits -= success_count
+        db.commit()
 
-        # Déduire les crédits pour les emails réussis
-        if success_count > 0:
-            current_user.credits -= success_count
-            db.commit()
-            logger.info(f"Crédits mis à jour : {current_user.credits} restants")
-
-        return {
-            "message": f"{success_count} emails envoyés avec succès",
-            "success_count": success_count,
-            "error_count": len(errors),
-            "errors": errors,
-            "remaining_credits": current_user.credits
-        }
-
-    except Exception as e:
-        logger.error(f"Erreur générale : {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e)
-        )
+    return {
+        "message": f"{success_count} emails envoyés avec succès",
+        "success_count": success_count,
+        "error_count": len(errors),
+        "errors": errors,
+        "remaining_credits": current_user.credits
+    }

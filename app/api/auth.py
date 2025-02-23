@@ -7,15 +7,17 @@ from googleapiclient.discovery import build
 from datetime import datetime, timedelta
 import jwt
 from fastapi.responses import RedirectResponse
+import logging
 from ..database import get_db
 from ..config import get_settings
 from ..models.user import User
 from ..schemas.user import User as UserSchema
+import uuid
 
 router = APIRouter()
 settings = get_settings()
-
 security = HTTPBearer()
+logger = logging.getLogger(__name__)
 
 async def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security),
@@ -54,32 +56,29 @@ async def login(request: Request):
             "https://www.googleapis.com/auth/userinfo.profile",
             "https://www.googleapis.com/auth/gmail.send",
             "https://www.googleapis.com/auth/drive.readonly",
-            "https://www.googleapis.com/auth/spreadsheets.readonly"
-            ]
+            "https://www.googleapis.com/auth/spreadsheets",
+            "https://www.googleapis.com/auth/spreadsheets.readonly"  # Ajouté pour cohérence
+        ]
     )
     
-    # Récupérer les paramètres de la requête
-    redirect_uri = request.query_params.get("redirect_uri")
-    state = request.query_params.get("state")
+    redirect_uri = request.query_params.get("redirect_uri") or settings.GOOGLE_REDIRECT_URI
+    state = request.query_params.get("state") or str(uuid.uuid4())  # Générer un state si absent
+    flow.redirect_uri = redirect_uri
     
-    # Configurer le flow avec les paramètres reçus
-    flow.redirect_uri = redirect_uri if redirect_uri else settings.GOOGLE_REDIRECT_URI
-    
-    authorization_url, _ = flow.authorization_url(
+    authorization_url, state = flow.authorization_url(
         access_type="offline",
         include_granted_scopes="true",
         state=state,
         prompt="consent"
     )
-    
-    # Retourner l'URL au lieu de rediriger
-    return {"authorization_url": authorization_url}
+    logger.info(f"URL d'autorisation générée avec state: {state}")
+    return {"authorization_url": authorization_url, "state": state}
 
 @router.get("/callback", include_in_schema=False)
-async def auth_callback(code: str, db: Session = Depends(get_db)):
+async def auth_callback(code: str, state: str = None, db: Session = Depends(get_db)):
     """Gère le callback de Google OAuth"""
+    logger.info(f"Callback appelé avec code: {code}, state: {state}")
     try:
-        # Recréer le flow avec les mêmes paramètres que dans login()
         flow = Flow.from_client_config(
             {
                 "web": {
@@ -95,20 +94,24 @@ async def auth_callback(code: str, db: Session = Depends(get_db)):
                 "https://www.googleapis.com/auth/userinfo.email",
                 "https://www.googleapis.com/auth/userinfo.profile",
                 "https://www.googleapis.com/auth/gmail.send",
-                "https://www.googleapis.com/auth/drive.readonly",       # Ajouté pour lister les Sheets
-                "https://www.googleapis.com/auth/spreadsheets.readonly" # Ajouté pour lire les données des Sheets
+                "https://www.googleapis.com/auth/drive.readonly",
+                "https://www.googleapis.com/auth/spreadsheets",
+                "https://www.googleapis.com/auth/spreadsheets.readonly"  # Ajouté pour cohérence
             ]
         )
-        flow.redirect_uri = settings.GOOGLE_REDIRECT_URI  # Assure-toi d'utiliser la même redirection
-
-        # Récupérer le token avec le code d'autorisation
+        flow.redirect_uri = settings.GOOGLE_REDIRECT_URI
+        logger.info(f"Tentative de fetch_token avec code: {code}, state: {state}")
+        
+        # Récupérer les tokens avec le code
         flow.fetch_token(code=code)
         credentials = flow.credentials
-        
+        logger.info(f"Credentials récupérés: {credentials.token[:10]}...")
+
         # Récupérer les informations de l'utilisateur
         service = build('oauth2', 'v2', credentials=credentials)
         user_info = service.userinfo().get().execute()
         email = user_info['email']
+        logger.info(f"Utilisateur identifié: {email}")
 
         # Créer ou mettre à jour l'utilisateur dans la DB
         db_user = db.query(User).filter(User.email == email).first()
@@ -126,6 +129,7 @@ async def auth_callback(code: str, db: Session = Depends(get_db)):
                 }
             )
             db.add(db_user)
+            logger.info(f"Nouvel utilisateur créé: {email}")
         else:
             db_user.google_tokens = {
                 "token": credentials.token,
@@ -135,21 +139,19 @@ async def auth_callback(code: str, db: Session = Depends(get_db)):
                 "client_secret": credentials.client_secret,
                 "scopes": credentials.scopes
             }
-        
+            logger.info(f"Utilisateur existant mis à jour: {email}")
+
         db.commit()
         db.refresh(db_user)
 
         # Générer le JWT
         access_token = create_access_token(data={"sub": email})
-        
+        logger.info(f"JWT généré, redirection vers frontend")
         return RedirectResponse(url=f"http://localhost:3000/user-home?token={access_token}")
 
     except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
-        )
-
+        logger.error(f"Erreur dans callback: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=400, detail=str(e))
 
 def create_access_token(data: dict):
     """Crée un JWT token"""
