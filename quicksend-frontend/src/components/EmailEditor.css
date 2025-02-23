@@ -1,40 +1,103 @@
-.editor-button {
-    padding: 8px; /* Réduit pour les icônes */
-    font-size: 1rem; /* Taille des icônes */
-    color: #333;
+.gmail-editor-container {
+    display: flex;
+    flex-direction: column;
+    height: 100%; /* Prend toute la hauteur disponible de la div parent */
+    width: 100%; /* Prend toute la largeur disponible */
+    border: 1px solid #e0e0e0;
+    border-radius: 4px;
     background-color: #fff;
-    border: 1px solid #ddd;
-    border-radius: 5px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    overflow: hidden;
+}
+
+.gmail-editor-toolbar {
+    padding: 8px 12px;
+    background-color: #f8f9fa;
+    border-bottom: 1px solid #e0e0e0;
+    display: flex;
+    gap: 4px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.gmail-editor-button {
+    padding: 6px;
+    font-size: 0.9rem;
+    color: #5f6368;
+    background-color: transparent;
+    border: 1px solid transparent;
+    border-radius: 2px;
     cursor: pointer;
     transition: all 0.2s ease;
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 40px; /* Taille fixe pour uniformité */
-    height: 40px;
+    width: 32px;
+    height: 32px;
 }
 
-.editor-button:hover,
-.editor-button:focus {
-    background-color: #28a745;
-    color: #fff;
-    border-color: #28a745;
-    outline: none;
+.gmail-editor-button:hover:not(.active) {
+    background-color: #f1f3f4;
+    border-color: #e0e0e0;
 }
 
-.editor-button:disabled {
+.gmail-editor-button.active {
+    background-color: #e8f0fe;
+    color: #1a73e8;
+    border-color: #d2e3fc;
+}
+
+.gmail-editor-button:disabled {
     opacity: 0.5;
     cursor: not-allowed;
 }
 
-.editor-select {
+.gmail-editor-select {
     padding: 6px 12px;
     font-size: 0.9rem;
-    border: 1px solid #ddd;
-    border-radius: 5px;
+    border: 1px solid #e0e0e0;
+    border-radius: 2px;
     background-color: #fff;
     cursor: pointer;
     transition: all 0.2s ease;
-    height: 40px; /* Alignement avec les boutons */
+    height: 32px;
+    outline: none;
 }
 
+.gmail-editor-select:focus {
+    border-color: #1a73e8;
+    box-shadow: 0 0 4px rgba(26, 115, 232, 0.3);
+}
+
+.variable-selector {
+    position: relative;
+}
+
+.gmail-editor-content {
+    flex: 1; /* Prend tout l’espace restant verticalement */
+    padding: 12px;
+    overflow: auto;
+    font-family: 'Roboto', Arial, sans-serif;
+    font-size: 1rem;
+    color: #202124;
+    line-height: 1.5;
+    outline: none;
+    border: none;
+    background-color: #fff;
+    text-align: left; /* Alignement à gauche par défaut */
+}
+
+.gmail-editor-content:focus {
+    outline: none;
+    box-shadow: inset 0 0 2px rgba(26, 115, 232, 0.2);
+}
+
+.editor-loading {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100%; /* Prend toute la hauteur disponible */
+    color: #5f6368;
+    font-size: 1rem;
+    background-color: #fff;
+}

@@ -1,71 +1,86 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useCallback } from 'react';
 import { EditorContent, useEditor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import TextAlign from '@tiptap/extension-text-align';
 import Underline from '@tiptap/extension-underline';
-import TextStyle from '@tiptap/extension-text-style';
-import Color from '@tiptap/extension-color';
+import Link from '@tiptap/extension-link';
+import OrderedList from '@tiptap/extension-ordered-list';
 import { 
-    FaBold, FaItalic, FaUnderline, 
-    FaAlignLeft, FaAlignCenter, FaAlignRight, FaAlignJustify, 
-    FaHeading, FaListUl, FaPaintBrush, FaEraser 
+    FaBold, FaItalic, FaUnderline, FaLink, 
+    FaAlignLeft, FaAlignCenter, FaAlignRight, 
+    FaListUl, FaListOl 
 } from 'react-icons/fa';
+
+import 'tippy.js/dist/tippy.css';
+import './EmailEditor.css';
 
 const EmailEditor = ({ content, onChange, variables = [] }) => {
     const editor = useEditor({
         extensions: [
-            StarterKit,
-            TextAlign.configure({ types: ['heading', 'paragraph'] }),
+            StarterKit.configure({
+                bulletList: { keepMarks: true },
+                orderedList: { keepMarks: true },
+            }),
+            TextAlign.configure({ types: ['heading', 'paragraph'], defaultAlignment: 'left' }), // Alignement par défaut à gauche
             Underline,
-            TextStyle,
-            Color,
+            Link.configure({ openOnClick: false }),
+            OrderedList,
         ],
-        content: content || '<p>Contenu de l\'email ici...</p>',
+        content: content || '<p>Écrivez votre email ici...</p>',
         onUpdate: ({ editor }) => {
             if (onChange) {
                 onChange(editor.getHTML());
             }
         },
+        editorProps: {
+            attributes: {
+                class: 'gmail-editor-content',
+            },
+        },
     });
 
-    // Synchroniser l'éditeur avec la prop content lorsqu'elle change
+    // Synchroniser l'éditeur avec la prop content
     useEffect(() => {
         if (editor && content !== editor.getHTML()) {
-            editor.commands.setContent(content || '');
+            editor.commands.setContent(content || '<p>Écrivez votre email ici...</p>');
         }
     }, [editor, content]);
 
+    // Focus automatique sur l'éditeur au chargement
+    useEffect(() => {
+        if (editor) {
+            editor.chain().focus().run();
+        }
+    }, [editor]);
+
+    // useCallback pour insérer une variable
+    const insertVariable = useCallback((variable) => {
+        if (editor) {
+            editor.chain().focus().insertContent(`{{${variable}}}`).run();
+        }
+    }, [editor]);
+
     if (!editor) {
-        return null;
+        return <div className="editor-loading">Chargement de l'éditeur...</div>;
     }
 
-    const insertVariable = (variable) => {
-        editor.chain().focus().insertContent(`{{${variable}}}`).run();
+    // Gestion des liens
+    const handleLink = () => {
+        const url = prompt('Entrez l’URL du lien :');
+        if (url) {
+            editor.chain().focus().setLink({ href: url }).run();
+        }
     };
 
     return (
-        <div style={{
-            display: 'flex',
-            flexDirection: 'column',
-            height: '400px',
-            borderRadius: '10px',
-            overflow: 'hidden',
-            boxShadow: '0 4px 15px rgba(0, 0, 0, 0.1)',
-            backgroundColor: '#fff',
-        }}>
-            <div style={{
-                padding: '10px',
-                backgroundColor: '#f1f3f5',
-                borderBottom: '1px solid #ddd',
-                display: 'flex',
-                gap: '8px',
-                flexWrap: 'wrap',
-            }}>
+        <div className="gmail-editor-container">
+            {/* Barre d’outils (style Gmail) */}
+            <div className="gmail-editor-toolbar">
                 <button
                     type="button"
                     onClick={() => editor.chain().focus().toggleBold().run()}
                     disabled={!editor.can().toggleBold()}
-                    className="editor-button"
+                    className={`gmail-editor-button ${editor.isActive('bold') ? 'active' : ''}`}
                     title="Gras"
                 >
                     <FaBold />
@@ -74,7 +89,7 @@ const EmailEditor = ({ content, onChange, variables = [] }) => {
                     type="button"
                     onClick={() => editor.chain().focus().toggleItalic().run()}
                     disabled={!editor.can().toggleItalic()}
-                    className="editor-button"
+                    className={`gmail-editor-button ${editor.isActive('italic') ? 'active' : ''}`}
                     title="Italique"
                 >
                     <FaItalic />
@@ -83,15 +98,39 @@ const EmailEditor = ({ content, onChange, variables = [] }) => {
                     type="button"
                     onClick={() => editor.chain().focus().toggleUnderline().run()}
                     disabled={!editor.can().toggleUnderline()}
-                    className="editor-button"
+                    className={`gmail-editor-button ${editor.isActive('underline') ? 'active' : ''}`}
                     title="Souligner"
                 >
                     <FaUnderline />
                 </button>
                 <button
                     type="button"
+                    onClick={handleLink}
+                    className={`gmail-editor-button ${editor.isActive('link') ? 'active' : ''}`}
+                    title="Ajouter un lien"
+                >
+                    <FaLink />
+                </button>
+                <button
+                    type="button"
+                    onClick={() => editor.chain().focus().toggleBulletList().run()}
+                    className={`gmail-editor-button ${editor.isActive('bulletList') ? 'active' : ''}`}
+                    title="Liste à puces"
+                >
+                    <FaListUl />
+                </button>
+                <button
+                    type="button"
+                    onClick={() => editor.chain().focus().toggleOrderedList().run()}
+                    className={`gmail-editor-button ${editor.isActive('orderedList') ? 'active' : ''}`}
+                    title="Liste numérotée"
+                >
+                    <FaListOl />
+                </button>
+                <button
+                    type="button"
                     onClick={() => editor.chain().focus().setTextAlign('left').run()}
-                    className="editor-button"
+                    className={`gmail-editor-button ${editor.isActive({ textAlign: 'left' }) ? 'active' : ''}`}
                     title="Aligner à gauche"
                 >
                     <FaAlignLeft />
@@ -99,7 +138,7 @@ const EmailEditor = ({ content, onChange, variables = [] }) => {
                 <button
                     type="button"
                     onClick={() => editor.chain().focus().setTextAlign('center').run()}
-                    className="editor-button"
+                    className={`gmail-editor-button ${editor.isActive({ textAlign: 'center' }) ? 'active' : ''}`}
                     title="Centrer"
                 >
                     <FaAlignCenter />
@@ -107,73 +146,35 @@ const EmailEditor = ({ content, onChange, variables = [] }) => {
                 <button
                     type="button"
                     onClick={() => editor.chain().focus().setTextAlign('right').run()}
-                    className="editor-button"
+                    className={`gmail-editor-button ${editor.isActive({ textAlign: 'right' }) ? 'active' : ''}`}
                     title="Aligner à droite"
                 >
                     <FaAlignRight />
                 </button>
-                <button
-                    type="button"
-                    onClick={() => editor.chain().focus().setTextAlign('justify').run()}
-                    className="editor-button"
-                    title="Justifier"
-                >
-                    <FaAlignJustify />
-                </button>
-                <button
-                    type="button"
-                    onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
-                    className="editor-button"
-                    title="Titre H1"
-                >
-                    <FaHeading />
-                </button>
-                <button
-                    type="button"
-                    onClick={() => editor.chain().focus().toggleBulletList().run()}
-                    className="editor-button"
-                    title="Liste à puces"
-                >
-                    <FaListUl />
-                </button>
-                <button
-                    type="button"
-                    onClick={() => editor.chain().focus().setColor('#ff0000').run()}
-                    className="editor-button"
-                    title="Couleur rouge"
-                >
-                    <FaPaintBrush style={{ color: '#ff0000' }} />
-                </button>
-                <button
-                    type="button"
-                    onClick={() => editor.chain().focus().unsetColor().run()}
-                    className="editor-button"
-                    title="Supprimer couleur"
-                >
-                    <FaEraser />
-                </button>
                 {variables.length > 0 && (
-                    <select
-                        onChange={(e) => insertVariable(e.target.value)}
-                        className="editor-select"
-                    >
-                        <option value="">Insérer une variable</option>
-                        {variables.map((variable) => (
-                            <option key={variable} value={variable}>{variable}</option>
-                        ))}
-                    </select>
+                    <div className="variable-selector">
+                        <select
+                            onChange={(e) => {
+                                insertVariable(e.target.value);
+                                e.target.selectedIndex = 0; // Réinitialiser après insertion
+                            }}
+                            className="gmail-editor-select"
+                        >
+                            <option value="">Insérer une variable</option>
+                            {variables.map((variable) => (
+                                <option key={variable} value={variable}>
+                                    {variable}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
                 )}
             </div>
+
+            {/* Zone d'édition (style Gmail, prenant toute la place) */}
             <EditorContent
                 editor={editor}
-                style={{
-                    flex: 1,
-                    padding: '15px',
-                    overflow: 'auto',
-                    fontSize: '1rem',
-                    color: '#333',
-                    backgroundColor: '#fff',
-                }}
+                className="gmail-editor-content"
             />
         </div>
     );
